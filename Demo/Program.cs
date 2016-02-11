@@ -14,8 +14,12 @@ namespace blqw.IOC
         static void Main(string[] args)
         {
             MEF.Initializer();
-            var func = MEF.PlugIns.Get<Func<string, string>>();
-            Console.WriteLine(func?.Invoke("test"));
+            var func = MEF.PlugIns.GetExports("x");
+            foreach (var item in func)
+            {
+                Console.WriteLine(item);
+            }
+            //Console.WriteLine(func?.Invoke("test"));
         }
     }
 

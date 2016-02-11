@@ -14,7 +14,7 @@ namespace blqw.IOC
     /// <summary>
     /// 插件
     /// </summary>
-    public sealed class PlugIn : Component
+    public sealed class PlugIn : Component, IComparable<PlugIn>
     {
         /// <summary>
         /// 初始化插件
@@ -27,17 +27,17 @@ namespace blqw.IOC
             definition.NotNull()?.Throw(nameof(definition));
             Name = definition.ContractName;
             Metadata = definition.Metadata;
-            Value = part.GetExportedValue(definition);
+            InnerValue = part.GetExportedValue(definition);
             Priority = GetMetadata("Priority", 0);
             TypeIdentity = GetMetadata<string>("ExportTypeIdentity", null);
-            IsMethod = Value is ExportedDelegate;
+            IsMethod = InnerValue is ExportedDelegate;
             if (IsMethod)
             {
-                Value = typeof(ExportedDelegate).GetField("_method", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(Value);
+                InnerValue = typeof(ExportedDelegate).GetField("_method", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(InnerValue);
             }
-            else if (Value != null)
+            else if (InnerValue != null)
             {
-                var type = Value.GetType();
+                var type = InnerValue.GetType();
                 if (TypeIdentity != null)
                 {
                     Type = type.Module.GetType(TypeIdentity, false, false) ?? type;
@@ -48,7 +48,7 @@ namespace blqw.IOC
                 }
             }
         }
-        
+
 
         /// <summary>
         /// 插件名称
@@ -66,14 +66,19 @@ namespace blqw.IOC
         public string TypeIdentity { get; private set; }
 
         /// <summary>
+        /// 系统部件
+        /// </summary>
+        public bool IsComposition { get; internal set; }
+
+        /// <summary>
         /// 是否是一个方法
         /// </summary>
         public bool IsMethod { get; private set; }
 
         /// <summary>
-        /// 插件
+        /// 插件的值
         /// </summary>
-        public object Value { get; private set; }
+        private object InnerValue { get; set; }
 
         /// <summary>
         /// 优先级
@@ -92,7 +97,7 @@ namespace blqw.IOC
         /// <param name="name">元数据值的名称</param>
         /// <param name="defaultValue">默认值</param>
         /// <returns></returns>
-        public T GetMetadata<T>(string name, T defaultValue)
+        public T GetMetadata<T>(string name, T defaultValue = default(T))
         {
             object value = null;
             if (Metadata?.TryGetValue(name, out value) == true)
@@ -106,18 +111,83 @@ namespace blqw.IOC
         }
 
         /// <summary>
-        /// 如果当前插件是一个方法,则创建指定委托后返回,否则返回null
+        /// 判断是否是可接受类型
         /// </summary>
-        /// <param name="delegateType">委托类型</param>
+        /// <param name="type"></param>
         /// <returns></returns>
-        public Delegate CreateDelegate(Type delegateType)
+        public bool IsAcceptType(Type type)
         {
-            delegateType.NotNull()?.Throw(nameof(delegateType));
-            if (IsMethod)
+            if (type == null)
             {
-                return ((MethodInfo)Value).CreateDelegate(delegateType);
+                return true;
             }
+            if (type == typeof(object))
+            {
+                return true;
+            }
+            if (IsMethod && type.IsSubclassOf(typeof(Delegate)))
+            {
+                var method = type.GetMethod("Invoke");
+                if (CompareMethodSign(method))
+                {
+                    return true;
+                }
+            }
+
+            if (type.IsInstanceOfType(InnerValue))
+            {
+                return true;
+            }
+
+            if (Type?.IsSubclassOf(type) == true)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 获取插件
+        /// </summary>
+        /// <param name="type">插件类型</param>
+        /// <returns></returns>
+        public object GetValue(Type type)
+        {
+            if (type == null)
+            {
+                return InnerValue;
+            }
+            if (IsMethod && type.IsSubclassOf(typeof(Delegate)))
+            {
+                var method = type.GetMethod("Invoke");
+                if (CompareMethodSign(method))
+                {
+                    return ((MethodInfo)InnerValue).CreateDelegate(type);
+                }
+            }
+
+            if (type.IsInstanceOfType(InnerValue))
+            {
+                return InnerValue;
+            }
+
+            if (Type.IsSubclassOf(type))
+            {
+                return InnerValue;
+            }
+
             return null;
+        }
+
+        /// <summary>
+        /// 获取插件
+        /// </summary>
+        /// <typeparam name="T">用于描述插件类型的泛型参数</typeparam>
+        /// <returns></returns>
+        public T GetValue<T>()
+        {
+            return (T)GetValue(typeof(T));
         }
 
         /// <summary>
@@ -125,13 +195,13 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="method">用于比较的方法</param>
         /// <returns></returns>
-        public bool CompareMethodSign(MethodInfo method)
+        private bool CompareMethodSign(MethodInfo method)
         {
             if (IsMethod == false || method == null)
             {
                 return false;
             }
-            var raw = (MethodInfo)Value;
+            var raw = (MethodInfo)InnerValue;
             if (raw.ReturnType != method.ReturnType)
             {
                 return false;
@@ -153,17 +223,41 @@ namespace blqw.IOC
         }
 
         /// <summary>
-        /// 获取插件元数据的特性
+        /// 交换2个对象中的属性值
         /// </summary>
-        /// <param name="name">元数据值的名称</param>
+        /// <param name="plugin1"></param>
+        /// <param name="plugin2"></param>
+        internal static void Swap(PlugIn plugin1, PlugIn plugin2)
+        {
+            plugin1.NotNull()?.Throw(nameof(plugin1));
+            plugin2.NotNull()?.Throw(nameof(plugin2));
+
+            foreach (var field in typeof(PlugIn).GetFields(BindingFlags.DeclaredOnly | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (field.IsLiteral) //常量
+                {
+                    continue;
+                }
+                var v1 = field.GetValue(plugin1);
+                var v2 = field.GetValue(plugin2);
+                field.SetValue(plugin1, v2);
+                field.SetValue(plugin2, v1);
+            }
+
+        }
+
+        /// <summary>
+        /// 比较2个插件的优先级
+        /// </summary>
+        /// <param name="other"></param>
         /// <returns></returns>
-        //public IEnumerable<object> GetMetadatas(string name)
-        //{
-        //    return null;
-        //}
-
-
-
-
+        public int CompareTo(PlugIn other)
+        {
+            if (other == null)
+            {
+                return 1;
+            }
+            return this.Priority.CompareTo(other.Priority);
+        }
     }
 }

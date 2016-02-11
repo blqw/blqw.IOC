@@ -30,8 +30,6 @@ namespace blqw.IOC
         /// <param name="value">待验证的值</param>
         public static Verified? NotNull(this object value)
         {
-            
-            "".Is<string>();
             if (value == null)
                 return new Verified(name => new ArgumentNullException(name));
             return null;

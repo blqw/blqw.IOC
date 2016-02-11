@@ -20,6 +20,7 @@ namespace blqw.IOC
     [Export("Component")]
     public sealed class MEF
     {
+
         const string GLOBAL_KEY = "O[ON}:z05i$*H75O[bJdnedei#('i_i^";
 
         /// <summary> 获取默认值
@@ -62,10 +63,11 @@ namespace blqw.IOC
                     Debug.Listeners.Add(new ConsoleTraceListener(true));
                 }
                 var catalog = GetCatalog();
-                foreach (var item in catalog)
-                {
-                    PlugIns.Adds(item.CreatePart());
-                }
+                PlugIns.AddCatalog(catalog);
+                //foreach (var item in catalog)
+                //{
+                //    PlugIns.Adds(item.CreatePart());
+                //}
                 //过滤优先级太低的插件
                 //catalog = FilterLower(catalog);
                 //将插件加入容器
