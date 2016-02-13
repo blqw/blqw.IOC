@@ -17,12 +17,11 @@ namespace blqw.IOC
     /// <summary>
     /// 用于执行MEF相关操作
     /// </summary>
-    [Export("Component")]
     public sealed class MEF
     {
         const string _Lock = "O[ON}:z05i$*H75O[bJdnedei#('i_i^";
 
-        /// <summary> 获取默认值
+        /// <summary> 是否已初始化完成
         /// </summary>
         public static bool IsInitialized { get; private set; }
 
@@ -30,17 +29,24 @@ namespace blqw.IOC
         /// 是否正在初始化
         /// </summary>
         /// <returns></returns>
-        private static bool IsInitializeing()
+        public static bool IsInitializeing
         {
-            if (Monitor.IsEntered(_Lock))
+            get
             {
+                if (IsInitialized)
+                {
+                    return false;
+                }
+                if (Monitor.IsEntered(_Lock))
+                {
+                    return true;
+                }
+                if (Monitor.TryEnter(_Lock))
+                {
+                    return false;
+                }
                 return true;
             }
-            if (Monitor.TryEnter(_Lock))
-            {
-                return false;
-            }
-            return true;
         }
 
         /// <summary>
@@ -53,9 +59,9 @@ namespace blqw.IOC
         /// </summary>
         public static PlugInContainer Initializer()
         {
-            if (IsInitialized || IsInitializeing())
+            if (IsInitialized || IsInitializeing)
             {
-                return null;
+                return PlugIns;
             }
             var plugins = new PlugInContainer();
             try
@@ -75,7 +81,7 @@ namespace blqw.IOC
             }
             return plugins;
         }
-        
+
         /// <summary> 获取插件
         /// </summary>
         /// <returns></returns>
@@ -99,6 +105,6 @@ namespace blqw.IOC
             }
             return logs;
         }
-        
+
     }
 }
