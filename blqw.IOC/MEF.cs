@@ -12,16 +12,20 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace blqw.IOC
+namespace blqw.IOC.Impl
 {
     /// <summary>
     /// 用于执行MEF相关操作
     /// </summary>
-    public sealed class MEF
+    sealed class MEF
     {
+        /// <summary>
+        /// 字符串锁
+        /// </summary>
         const string _Lock = "O[ON}:z05i$*H75O[bJdnedei#('i_i^";
 
-        /// <summary> 是否已初始化完成
+        /// <summary> 
+        /// 是否已初始化完成
         /// </summary>
         public static bool IsInitialized { get; private set; }
 
@@ -55,7 +59,8 @@ namespace blqw.IOC
         [Export("MEF.PlugIns")]
         public static PlugInContainer PlugIns { get; } = Initializer();
 
-        /// <summary> 初始化
+        /// <summary> 
+        /// 初始化
         /// </summary>
         public static PlugInContainer Initializer()
         {
@@ -66,7 +71,8 @@ namespace blqw.IOC
             var plugins = new PlugInContainer();
             try
             {
-                if (Debugger.IsAttached)
+                if (Debugger.IsAttached
+                    && Debug.Listeners.OfType<ConsoleTraceListener>().Any() == false)
                 {
                     Debug.Listeners.Add(new ConsoleTraceListener(true));
                 }
