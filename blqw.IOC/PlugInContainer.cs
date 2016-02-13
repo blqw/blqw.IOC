@@ -15,9 +15,14 @@ namespace blqw.IOC
     /// </summary>
     public sealed class PlugInContainer : Container, IEnumerable<PlugIn>
     {
-
+        /// <summary>
+        /// 插件部件目录
+        /// </summary>
         private readonly AggregateCatalog _CataLog;
 
+        /// <summary>
+        /// 插件部件容器
+        /// </summary>
         private readonly CompositionContainer _Container;
 
         public PlugInContainer()
@@ -61,8 +66,6 @@ namespace blqw.IOC
                 return (PlugIn)Components[name];
             }
         }
-
-
         
         /// <summary>
         /// 获取插件导出项
@@ -165,8 +168,7 @@ namespace blqw.IOC
         {
             return GetExports(null, typeof(T)).Cast<T>();
         }
-
-
+        
         /// <summary>
         /// 获取优先级最高的一个插件的导出项
         /// </summary>
@@ -233,15 +235,7 @@ namespace blqw.IOC
         {
             return (T)GetExport(null, typeof(T));
         }
-
-
-
-
-
-
-
-
-
+        
         /// <summary>
         /// 添加插件组件部件目录
         /// </summary>
@@ -274,13 +268,21 @@ namespace blqw.IOC
             }
         }
 
-
+        /// <summary>
+        /// 向容器中增加自定义插件
+        /// </summary>
+        /// <param name="component">插件</param>
         public override void Add(IComponent component)
         {
             component.Is<PlugIn>()?.Throw(nameof(component));
             Add((PlugIn)component);
         }
 
+        /// <summary>
+        /// 向容器中增加自定义插件
+        /// </summary>
+        /// <param name="component">插件</param>
+        /// <param name="name">插件名称</param>
         public override void Add(IComponent component, string name)
         {
             component.Is<PlugIn>()?.Throw(nameof(component));
@@ -288,12 +290,20 @@ namespace blqw.IOC
             Add((PlugIn)component);
         }
 
-
+        /// <summary>
+        /// 确定组件对此容器是否唯一。
+        /// </summary>
+        /// <param name="component"></param>
+        /// <param name="name"></param>
         protected override void ValidateName(IComponent component, string name)
         {
             base.ValidateName(component, null);
         }
 
+        /// <summary>
+        /// 枚举所有插件
+        /// </summary>
+        /// <returns></returns>
         public IEnumerator<PlugIn> GetEnumerator()
         {
             foreach (PlugIn plugin in this.Components)
@@ -302,6 +312,10 @@ namespace blqw.IOC
             }
         }
 
+        /// <summary>
+        /// 枚举所有插件
+        /// </summary>
+        /// <returns></returns>
         IEnumerator IEnumerable.GetEnumerator()
         {
             return Components.GetEnumerator();

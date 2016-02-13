@@ -11,11 +11,18 @@ namespace blqw.IOC
     /// </summary>
     struct Verified
     {
+        /// <summary>
+        /// 初始化 验证失败结果的实例
+        /// </summary>
+        /// <param name="createException">用于创建异常对象的委托</param>
         public Verified(Func<string, Exception> createException)
         {
             _CreateException = createException;
         }
 
+        /// <summary>
+        /// 创建异常对象的委托
+        /// </summary>
         private Func<string, Exception> _CreateException;
 
         /// <summary>
@@ -46,7 +53,6 @@ namespace blqw.IOC
         {
             return value._CreateException == null;
         }
-
 
         /// <summary>
         /// 隐式转换为布尔类型

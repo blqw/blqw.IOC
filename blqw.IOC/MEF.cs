@@ -20,7 +20,7 @@ namespace blqw.IOC
     [Export("Component")]
     public sealed class MEF
     {
-        const string GLOBAL_KEY = "O[ON}:z05i$*H75O[bJdnedei#('i_i^";
+        const string _Lock = "O[ON}:z05i$*H75O[bJdnedei#('i_i^";
 
         /// <summary> 获取默认值
         /// </summary>
@@ -32,11 +32,11 @@ namespace blqw.IOC
         /// <returns></returns>
         private static bool IsInitializeing()
         {
-            if (Monitor.IsEntered(GLOBAL_KEY))
+            if (Monitor.IsEntered(_Lock))
             {
                 return true;
             }
-            if (Monitor.TryEnter(GLOBAL_KEY))
+            if (Monitor.TryEnter(_Lock))
             {
                 return false;
             }
@@ -70,8 +70,8 @@ namespace blqw.IOC
             finally
             {
                 IsInitialized = true;
-                if (Monitor.IsEntered(GLOBAL_KEY))
-                    Monitor.Exit(GLOBAL_KEY);
+                if (Monitor.IsEntered(_Lock))
+                    Monitor.Exit(_Lock);
             }
             return plugins;
         }

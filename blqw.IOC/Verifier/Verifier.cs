@@ -25,7 +25,7 @@ namespace blqw.IOC
         }
 
         /// <summary>
-        /// 验证value是否为null
+        /// 验证value是否为null,验证通过返回null
         /// </summary>
         /// <param name="value">待验证的值</param>
         public static Verified? NotNull(this object value)
@@ -35,9 +35,8 @@ namespace blqw.IOC
             return null;
         }
 
-
         /// <summary>
-        /// 验证value值是否为类型 <typeparamref name="T"/>
+        /// 验证value值是否为类型 <typeparamref name="T"/> ,验证通过返回null
         /// </summary>
         /// <typeparam name="T">用于验证value类型的泛型参数</typeparam>
         /// <param name="value">待验证的值</param>

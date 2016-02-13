@@ -49,7 +49,6 @@ namespace blqw.IOC
             }
         }
 
-
         /// <summary>
         /// 插件名称
         /// </summary>
