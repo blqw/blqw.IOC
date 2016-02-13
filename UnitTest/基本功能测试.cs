@@ -44,7 +44,6 @@ namespace blqw.IOC
         [TestMethod]
         public void 测试获取方法_属性_字段()
         {
-            MEF.Initializer();
             Assert.AreEqual("a", MEF.PlugIns.GetExport<Func<string>>()?.Invoke());
             Assert.AreEqual("a1", MEF.PlugIns.GetExport<string>("a"));
             Assert.AreEqual("b", MEF.PlugIns.GetExport<string>("b"));

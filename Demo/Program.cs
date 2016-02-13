@@ -13,7 +13,6 @@ namespace blqw.IOC
     {
         static void Main(string[] args)
         {
-            MEF.Initializer();
             var func = MEF.PlugIns.GetExports("x");
             foreach (var item in func)
             {

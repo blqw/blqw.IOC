@@ -23,7 +23,6 @@ namespace blqw.IOC
         [TestMethod]
         public void 测试优先级策略()
         {
-            MEF.Initializer();
             var s = MEF.PlugIns["x"].GetValue<Func<string>>()?.Invoke();
             Assert.AreEqual("2", s);
         }
