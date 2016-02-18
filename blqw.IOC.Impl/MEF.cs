@@ -57,7 +57,7 @@ namespace blqw.IOC.Impl
         /// <summary>
         /// 插件容器
         /// </summary>
-        public static CompositionContainer Container { get; } = Initializer();
+        public static CompositionContainer Container { get; private set; } = Initializer();
 
         /// <summary> 
         /// 初始化

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
@@ -119,6 +120,205 @@ namespace blqw.IOC
         }
 
 
+        /// <summary>
+        /// 导入插件
+        /// </summary>
+        /// <param name="instance"></param>
+        public static void Import(object instance)
+        {
+            if (instance == null)
+            {
+                return;
+            }
+
+            var type = instance as Type;
+            if (type != null)
+            {
+                Import(type);
+                return;
+            }
+
+            Container.ComposeParts(instance);
+        }
+
+        /// <summary>
+        /// 导入插件
+        /// </summary>
+        /// <param name="type"></param>
+        public static void Import(Type type)
+        {
+            const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly;
+            
+
+            foreach (var f in type.GetFields(flags))
+            {
+                if (f.IsLiteral == true)
+                {
+                    continue;
+                }
+                ImportData data;
+                var import = f.GetCustomAttribute<ImportAttribute>();
+                if (import != null)
+                {
+                    data = new ImportData(import);
+                }
+                else
+                {
+                    var importMany = f.GetCustomAttribute<ImportManyAttribute>();
+                    if (import == null)
+                    {
+                        continue;
+                    }
+                    data = new ImportData(import);
+                }
+
+                data.ResultType = f.FieldType;
+                var value = GetExportedValue(data);
+                f.SetValue(null, value);
+            }
+            var args = new object[1];
+            foreach (var p in type.GetProperties(flags))
+            {
+                var set = p.GetSetMethod(true);
+                if (set == null)
+                {
+                    continue;
+                }
+
+                ImportData data;
+                var import = p.GetCustomAttribute<ImportAttribute>();
+                if (import != null)
+                {
+                    data = new ImportData(import);
+                }
+                else
+                {
+                    var importMany = p.GetCustomAttribute<ImportManyAttribute>();
+                    if (import == null)
+                    {
+                        continue;
+                    }
+                    data = new ImportData(import);
+                }
+
+                data.ResultType = p.PropertyType;
+                var value = GetExportedValue(data);
+                args[0] = value;
+                set.Invoke(null, args);
+            }
+        }
+
+        struct ImportData
+        {
+            public ImportData(ImportAttribute import)
+            {
+                AllowRecomposition = import.AllowRecomposition;
+                ContractName = import.ContractName;
+                Cardinality = ImportCardinality.ZeroOrOne;
+                ContractType = import.ContractType;
+                RequiredCreationPolicy = import.RequiredCreationPolicy;
+                Source = import.Source;
+                ResultType = null;
+            }
+
+            public ImportData(ImportManyAttribute import)
+            {
+                AllowRecomposition = import.AllowRecomposition;
+                ContractName = import.ContractName;
+                Cardinality = ImportCardinality.ZeroOrMore;
+                ContractType = import.ContractType;
+                RequiredCreationPolicy = import.RequiredCreationPolicy;
+                Source = import.Source;
+                ResultType = null;
+            }
+
+            public bool AllowRecomposition;
+            public ImportCardinality Cardinality;
+            public string ContractName;
+            public Type ContractType;
+            public CreationPolicy RequiredCreationPolicy;
+            public ImportSource Source;
+            public Type ResultType;
+        }
+
+        private static object GetExportedValue(ImportData importData)
+        {
+            Lazy<object>[] exports;
+            if (importData.ContractType == null)
+            {
+                exports = Container.GetExports<object>(importData.ContractName).ToArray();
+            }
+            else if (importData.ContractName == null)
+            {
+                exports = Container.GetExports(importData.ContractType ?? importData.ResultType, null, null).ToArray();
+            }
+            else
+            {
+                exports = Container.GetExports(importData.ContractType, null, importData.ContractName).ToArray();
+            }
+
+            if (importData.Cardinality == ImportCardinality.ExactlyOne)
+            {
+                switch (exports.Length)
+                {
+                    case 1:
+                        return ConvertExportedValue(exports[0].Value, importData.ResultType);
+                    case 0:
+                        throw new NotSupportedException("要求返回1个插件,但没有找到任何匹配的输出插件");
+                    default:
+                        throw new NotSupportedException("要求返回1个插件,但找到多个匹配的输出插件");
+                }
+            }
+
+            if (exports.Length == 0)
+            {
+                return null;
+            }
+
+            if (importData.Cardinality == ImportCardinality.ZeroOrOne)
+            {
+                foreach (var export in exports.Reverse())
+                {
+                    var value = ConvertExportedValue(export.Value, importData.ResultType);
+                    if (value != null)
+                    {
+                        return value;
+                    }
+                }
+                return null;
+            }
+
+            var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(importData.ResultType));
+
+            foreach (var export in exports)
+            {
+                var value = ConvertExportedValue(export.Value, importData.ResultType);
+                if (value != null)
+                {
+                    list.Add(value);
+                }
+            }
+            return list;
+        }
+
+        private static object ConvertExportedValue(object value, Type type)
+        {
+            if (value == null)
+            {
+                return null;
+            }
+            if (type.IsInstanceOfType(value))
+            {
+                return value;
+            }
+            var handler = value as ExportedDelegate;
+            if (handler != null && type.IsSubclassOf(typeof(Delegate)))
+            {
+                return handler.CreateDelegate(type);
+            }
+            return null;
+        }
+
         class SelectionPriorityContainer : CompositionContainer
         {
             public SelectionPriorityContainer(ComposablePartCatalog catalog)
@@ -144,7 +344,9 @@ namespace blqw.IOC
                 }).Take(1).ToArray();
             }
         }
-        
+
+        #region 拓展功能
+
         /// <summary> 获取插件
         /// </summary>
         /// <returns></returns>
@@ -168,6 +370,8 @@ namespace blqw.IOC
             }
             return logs;
         }
+
+        #endregion
 
     }
 }
