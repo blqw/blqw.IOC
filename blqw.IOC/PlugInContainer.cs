@@ -31,6 +31,12 @@ namespace blqw.IOC
             _Container = new CompositionContainer(_CataLog);
         }
 
+        public PlugInContainer(ComposablePartCatalog catalog)
+            :this()
+        {
+            AddCatalog(catalog);
+        }
+
         /// <summary>
         /// 向容器中增加自定义插件
         /// </summary>

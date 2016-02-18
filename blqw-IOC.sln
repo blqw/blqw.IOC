@@ -10,6 +10,11 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTest", "UnitTest\UnitTest.csproj", "{3851DD5D-D103-41C6-AA20-A1D1399345DD}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "其他项", "其他项", "{4E12B83E-9E7C-407A-8EFE-14BEC1E6D628}"
+	ProjectSection(SolutionItems) = preProject
+		readme.md = readme.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "blqw.IOC.Impl", "blqw.IOC.Impl\blqw.IOC.Impl.csproj", "{D069A888-1D20-4629-B12F-A45C14E15DAF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,6 +34,10 @@ Global
 		{3851DD5D-D103-41C6-AA20-A1D1399345DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3851DD5D-D103-41C6-AA20-A1D1399345DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3851DD5D-D103-41C6-AA20-A1D1399345DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D069A888-1D20-4629-B12F-A45C14E15DAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D069A888-1D20-4629-B12F-A45C14E15DAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D069A888-1D20-4629-B12F-A45C14E15DAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D069A888-1D20-4629-B12F-A45C14E15DAF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

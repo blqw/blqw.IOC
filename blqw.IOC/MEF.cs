@@ -12,12 +12,13 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace blqw.IOC.Impl
+namespace blqw.IOC
 {
     /// <summary>
     /// 用于执行MEF相关操作
     /// </summary>
-    sealed class MEF
+    [Export("MEF")]
+    public sealed class MEF
     {
         /// <summary>
         /// 字符串锁
@@ -53,22 +54,33 @@ namespace blqw.IOC.Impl
             }
         }
 
+        static PlugInContainer _PlugIns;
         /// <summary>
         /// 插件容器
         /// </summary>
-        [Export("MEF.PlugIns")]
-        public static PlugInContainer PlugIns { get; } = Initializer();
+        public static PlugInContainer PlugIns
+        {
+            get
+            {
+                return _PlugIns ?? (_PlugIns = Container == null ? null : new PlugInContainer(Container.Catalog));
+            }
+        }
+
+
+        /// <summary>
+        /// 插件容器
+        /// </summary>
+        public static CompositionContainer Container { get; private set; } = Initializer();
 
         /// <summary> 
         /// 初始化
         /// </summary>
-        public static PlugInContainer Initializer()
+        public static CompositionContainer Initializer()
         {
             if (IsInitialized || IsInitializeing)
             {
-                return PlugIns;
+                return Container;
             }
-            var plugins = new PlugInContainer();
             try
             {
                 if (Debugger.IsAttached
@@ -77,7 +89,26 @@ namespace blqw.IOC.Impl
                     Debug.Listeners.Add(new ConsoleTraceListener(true));
                 }
                 var catalog = GetCatalog();
-                plugins.AddCatalog(catalog);
+                var container = new SelectionPriorityContainer(catalog);
+                var args = new object[] { container };
+                foreach (var mef in container.GetExportedValues<object>("MEF"))
+                {
+                    var type = mef.GetType();
+                    if (type == typeof(MEF))
+                    {
+                        continue;
+                    }
+                    var p = type.GetProperty("Container");
+                    if (p != null && p.PropertyType == typeof(CompositionContainer))
+                    {
+                        var set = p.GetSetMethod(true);
+                        if (set != null)
+                        {
+                            set.Invoke(null, args);
+                        }
+                    }
+                }
+                return container;
             }
             finally
             {
@@ -85,9 +116,35 @@ namespace blqw.IOC.Impl
                 if (Monitor.IsEntered(_Lock))
                     Monitor.Exit(_Lock);
             }
-            return plugins;
         }
 
+
+        class SelectionPriorityContainer : CompositionContainer
+        {
+            public SelectionPriorityContainer(ComposablePartCatalog catalog)
+                : base(catalog)
+            {
+
+            }
+            protected override IEnumerable<Export> GetExportsCore(ImportDefinition definition, AtomicComposition atomicComposition)
+            {
+                var exports = base.GetExportsCore(definition, atomicComposition);
+                if (definition.Cardinality == ImportCardinality.ZeroOrMore)
+                {
+                    return exports;
+                }
+                return exports.OrderByDescending(it =>
+                {
+                    object priority;
+                    if (it.Metadata.TryGetValue("Priority", out priority))
+                    {
+                        return priority;
+                    }
+                    return 0;
+                }).Take(1).ToArray();
+            }
+        }
+        
         /// <summary> 获取插件
         /// </summary>
         /// <returns></returns>
