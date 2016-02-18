@@ -7,6 +7,7 @@ using System.ComponentModel.Composition.Primitives;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -148,7 +149,7 @@ namespace blqw.IOC
         public static void Import(Type type)
         {
             const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly;
-            
+
 
             foreach (var f in type.GetFields(flags))
             {
@@ -156,24 +157,12 @@ namespace blqw.IOC
                 {
                     continue;
                 }
-                ImportData data;
-                var import = f.GetCustomAttribute<ImportAttribute>();
-                if (import != null)
+                var import = GetImportDefinition(f, f.FieldType);
+                if (import == null)
                 {
-                    data = new ImportData(import);
+                    continue;
                 }
-                else
-                {
-                    var importMany = f.GetCustomAttribute<ImportManyAttribute>();
-                    if (import == null)
-                    {
-                        continue;
-                    }
-                    data = new ImportData(import);
-                }
-
-                data.ResultType = f.FieldType;
-                var value = GetExportedValue(data);
+                var value = GetExportedValue(import, f.FieldType);
                 f.SetValue(null, value);
             }
             var args = new object[1];
@@ -184,121 +173,120 @@ namespace blqw.IOC
                 {
                     continue;
                 }
-
-                ImportData data;
-                var import = p.GetCustomAttribute<ImportAttribute>();
-                if (import != null)
+                var import = GetImportDefinition(p, p.PropertyType);
+                if (import == null)
                 {
-                    data = new ImportData(import);
+                    continue;
                 }
-                else
-                {
-                    var importMany = p.GetCustomAttribute<ImportManyAttribute>();
-                    if (import == null)
-                    {
-                        continue;
-                    }
-                    data = new ImportData(import);
-                }
-
-                data.ResultType = p.PropertyType;
-                var value = GetExportedValue(data);
+                var value = GetExportedValue(import, p.PropertyType);
                 args[0] = value;
                 set.Invoke(null, args);
             }
         }
 
-        struct ImportData
+        private static ImportDefinition GetImportDefinition(MemberInfo member, Type resultType)
         {
-            public ImportData(ImportAttribute import)
+            var import = member.GetCustomAttribute<ImportAttribute>();
+            if (import != null)
             {
-                AllowRecomposition = import.AllowRecomposition;
-                ContractName = import.ContractName;
-                Cardinality = ImportCardinality.ZeroOrOne;
-                ContractType = import.ContractType;
-                RequiredCreationPolicy = import.RequiredCreationPolicy;
-                Source = import.Source;
-                ResultType = null;
+                return new ImportDefinition(
+                    GetExpression(import.ContractName, import.ContractType, resultType),
+                    import.ContractName,
+                    ImportCardinality.ZeroOrOne,
+                    false,
+                    true,
+                    null);
             }
-
-            public ImportData(ImportManyAttribute import)
+            var importMany = member.GetCustomAttribute<ImportManyAttribute>();
+            if (import != null)
             {
-                AllowRecomposition = import.AllowRecomposition;
-                ContractName = import.ContractName;
-                Cardinality = ImportCardinality.ZeroOrMore;
-                ContractType = import.ContractType;
-                RequiredCreationPolicy = import.RequiredCreationPolicy;
-                Source = import.Source;
-                ResultType = null;
+                return new ImportDefinition(
+                    GetExpression(import.ContractName, import.ContractType, resultType),
+                    import.ContractName,
+                    ImportCardinality.ZeroOrMore,
+                    false,
+                    true,
+                    null);
             }
-
-            public bool AllowRecomposition;
-            public ImportCardinality Cardinality;
-            public string ContractName;
-            public Type ContractType;
-            public CreationPolicy RequiredCreationPolicy;
-            public ImportSource Source;
-            public Type ResultType;
+            return null;
         }
 
-        private static object GetExportedValue(ImportData importData)
+
+
+
+        static readonly MethodInfo _ContainsKey = typeof(IDictionary<string, object>).GetMethod("ContainsKey");
+
+        static readonly MethodInfo _getItem = typeof(IDictionary<string, object>).GetProperties().Where(it => it.GetIndexParameters()?.Length > 0).Select(it => it.GetGetMethod()).First();
+
+        private static Expression<Func<ExportDefinition, bool>> GetExpression(string name, Type contractType, Type resultType)
         {
-            Lazy<object>[] exports;
-            if (importData.ContractType == null)
+            var p = Expression.Parameter(typeof(ExportDefinition), "p");
+            Expression left = null;
+            Expression right = null;
+            var type = contractType ?? typeof(object);
+            if (name != null)
             {
-                exports = Container.GetExports<object>(importData.ContractName).ToArray();
+
+                var a = Expression.Property(p, "ContractName");
+                left = Expression.Equal(a, Expression.Constant(name));
             }
-            else if (importData.ContractName == null)
+            else if(type == null)
             {
-                exports = Container.GetExports(importData.ContractType ?? importData.ResultType, null, null).ToArray();
-            }
-            else
-            {
-                exports = Container.GetExports(importData.ContractType, null, importData.ContractName).ToArray();
+                resultType = type;
             }
 
-            if (importData.Cardinality == ImportCardinality.ExactlyOne)
+            if (type != typeof(object))
             {
-                switch (exports.Length)
+                var t = AttributedModelServices.GetTypeIdentity(type);
+                var metadata = Expression.Property(p, "Metadata");
+                var typeIdentity = Expression.Constant("TypeIdentity");
+                var containsKey = Expression.Call(metadata, _ContainsKey, typeIdentity);
+
+                var getItem = Expression.Call(metadata, _getItem, typeIdentity);
+
+                right = Expression.AndAlso(containsKey, Expression.Equal(getItem, Expression.Constant(t)));
+            }
+
+            if (left == null && right == null)
+            {
+                return Expression.Lambda<Func<ExportDefinition, bool>>(Expression.Constant(true), p);
+            }
+
+            if (left == null)
+            {
+                return Expression.Lambda<Func<ExportDefinition, bool>>(right, p);
+            }
+
+            if (right == null)
+            {
+                return Expression.Lambda<Func<ExportDefinition, bool>>(left, p);
+            }
+
+            var c = Expression.AndAlso(left, right);
+            return Expression.Lambda<Func<ExportDefinition, bool>>(c, p);
+        }
+
+
+        private static object GetExportedValue(ImportDefinition import, Type resultType)
+        {
+            var exports = Container.GetExports(import);
+
+            if (import.Cardinality == ImportCardinality.ZeroOrMore)
+            {
+                var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(resultType));
+
+                foreach (var export in exports)
                 {
-                    case 1:
-                        return ConvertExportedValue(exports[0].Value, importData.ResultType);
-                    case 0:
-                        throw new NotSupportedException("要求返回1个插件,但没有找到任何匹配的输出插件");
-                    default:
-                        throw new NotSupportedException("要求返回1个插件,但找到多个匹配的输出插件");
-                }
-            }
-
-            if (exports.Length == 0)
-            {
-                return null;
-            }
-
-            if (importData.Cardinality == ImportCardinality.ZeroOrOne)
-            {
-                foreach (var export in exports.Reverse())
-                {
-                    var value = ConvertExportedValue(export.Value, importData.ResultType);
+                    var value = ConvertExportedValue(export.Value, resultType);
                     if (value != null)
                     {
-                        return value;
+                        list.Add(value);
                     }
                 }
-                return null;
+                return list;
             }
-
-            var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(importData.ResultType));
-
-            foreach (var export in exports)
-            {
-                var value = ConvertExportedValue(export.Value, importData.ResultType);
-                if (value != null)
-                {
-                    list.Add(value);
-                }
-            }
-            return list;
+            
+            return ConvertExportedValue(exports.FirstOrDefault()?.Value, resultType);
         }
 
         private static object ConvertExportedValue(object value, Type type)
@@ -328,11 +316,23 @@ namespace blqw.IOC
             }
             protected override IEnumerable<Export> GetExportsCore(ImportDefinition definition, AtomicComposition atomicComposition)
             {
-                var exports = base.GetExportsCore(definition, atomicComposition);
+                //var exports = base.GetExportsCore(definition, atomicComposition);
+                var exports = base.GetExportsCore(
+                                new ImportDefinition(
+                                    definition.Constraint,
+                                    definition.ContractName,
+                                    ImportCardinality.ZeroOrMore,
+                                    definition.IsRecomposable,
+                                    definition.IsPrerequisite,
+                                    definition.Metadata
+                                ), atomicComposition);
+
                 if (definition.Cardinality == ImportCardinality.ZeroOrMore)
                 {
                     return exports;
                 }
+
+                //返回优先级最高的一个或者没有
                 return exports.OrderByDescending(it =>
                 {
                     object priority;
@@ -343,6 +343,7 @@ namespace blqw.IOC
                     return 0;
                 }).Take(1).ToArray();
             }
+
         }
 
         #region 拓展功能

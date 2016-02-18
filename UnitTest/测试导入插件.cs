@@ -11,7 +11,7 @@ namespace blqw.IOC
         public class MyClass
         {
             [Export("test")]
-            [ExportMetadata("Priority", 99)]
+            [ExportMetadata("Priority", 98)]
             public static string test2 = "2";
 
             [Export("test")]
@@ -36,8 +36,7 @@ namespace blqw.IOC
             MEF.Import(this);
             Assert.AreEqual(MyClass.test, s);
         }
-
-
+        
         [Import("test")]
         private static string ss;
 
@@ -48,7 +47,7 @@ namespace blqw.IOC
             MEF.Import(typeof(UnitTest3));
             Assert.AreEqual(MyClass.test, ss);
         }
-
+        
 
     }
 }

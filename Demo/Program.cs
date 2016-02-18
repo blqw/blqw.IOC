@@ -14,8 +14,11 @@ namespace blqw.IOC
     public class Program
     {
         [Import("test")]
+        [ExportMetadata("Priority", 99)]
         private string s;
 
+        [Import("a")]
+        private Func<string> a;
         static void Main(string[] args)
         {
             var program = new Program();
@@ -42,5 +45,11 @@ namespace blqw.IOC
         [Export("test")]
         [ExportMetadata("Priority", 99)]
         public static string test1 = "1";
+
+        [Export("a")]
+        public static string a()
+        {
+            return "s";
+        }
     }
 }
