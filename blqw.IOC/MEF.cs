@@ -56,19 +56,6 @@ namespace blqw.IOC
             }
         }
 
-        static PlugInContainer _PlugIns;
-        /// <summary>
-        /// 插件容器
-        /// </summary>
-        public static PlugInContainer PlugIns
-        {
-            get
-            {
-                return _PlugIns ?? (_PlugIns = Container == null ? null : new PlugInContainer(Container.Catalog));
-            }
-        }
-
-
         /// <summary>
         /// 插件容器
         /// </summary>
@@ -119,7 +106,30 @@ namespace blqw.IOC
                     Monitor.Exit(_Lock);
             }
         }
-
+        
+        /// <summary> 获取插件
+        /// </summary>
+        /// <returns></returns>
+        private static ComposablePartCatalog GetCatalog()
+        {
+            var dir = new DirectoryCatalog(".").FullPath;
+            var files = Directory.EnumerateFiles(dir, "*.dll", SearchOption.AllDirectories)
+                .Union(Directory.EnumerateFiles(dir, "*.exe", SearchOption.AllDirectories));
+            var logs = new AggregateCatalog();
+            foreach (var file in files)
+            {
+                try
+                {
+                    var asmCat = new AssemblyCatalog(file);
+                    if (asmCat.Parts.ToList().Count > 0)
+                        logs.Catalogs.Add(asmCat);
+                }
+                catch (Exception)
+                {
+                }
+            }
+            return logs;
+        }
 
         /// <summary>
         /// 导入插件
@@ -199,6 +209,9 @@ namespace blqw.IOC
             }
         }
 
+        /// <summary>
+        /// 增加2个额外属性
+        /// </summary>
         class ImportDefinitionImpl : ImportDefinition
         {
             public ImportDefinitionImpl(Expression<Func<ExportDefinition, bool>> constraint, string contractName, ImportCardinality cardinality, bool isRecomposable, bool isPrerequisite, IDictionary<string, object> metadata)
@@ -420,6 +433,7 @@ namespace blqw.IOC
                             list.Add(value);
                         }
                     }
+                    
                     if (import.MemberType.IsArray)
                     {
                         var array = Array.CreateInstance(import.ExportedType, list.Count);
@@ -464,6 +478,9 @@ namespace blqw.IOC
             return null;
         }
 
+        /// <summary>
+        /// 按优先级过滤插件
+        /// </summary>
         class SelectionPriorityContainer : CompositionContainer
         {
             public SelectionPriorityContainer(ComposablePartCatalog catalog)
@@ -505,28 +522,16 @@ namespace blqw.IOC
 
         #region 拓展功能
 
-        /// <summary> 获取插件
+        static PlugInContainer _PlugIns;
+        /// <summary>
+        /// 插件容器
         /// </summary>
-        /// <returns></returns>
-        private static ComposablePartCatalog GetCatalog()
+        public static PlugInContainer PlugIns
         {
-            var dir = new DirectoryCatalog(".").FullPath;
-            var files = Directory.EnumerateFiles(dir, "*.dll", SearchOption.AllDirectories)
-                .Union(Directory.EnumerateFiles(dir, "*.exe", SearchOption.AllDirectories));
-            var logs = new AggregateCatalog();
-            foreach (var file in files)
+            get
             {
-                try
-                {
-                    var asmCat = new AssemblyCatalog(file);
-                    if (asmCat.Parts.ToList().Count > 0)
-                        logs.Catalogs.Add(asmCat);
-                }
-                catch (Exception)
-                {
-                }
+                return _PlugIns ?? (_PlugIns = Container == null ? null : new PlugInContainer(Container.Catalog));
             }
-            return logs;
         }
 
         #endregion
