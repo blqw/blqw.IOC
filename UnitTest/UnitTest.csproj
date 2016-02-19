@@ -54,6 +54,8 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="测试导入类型实现.cs" />
+    <Compile Include="测试导入插件组.cs" />
     <Compile Include="测试导入插件.cs" />
     <Compile Include="基本功能测试.cs" />
     <Compile Include="优先级策略.cs" />

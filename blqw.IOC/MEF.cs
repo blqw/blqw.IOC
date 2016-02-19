@@ -135,21 +135,36 @@ namespace blqw.IOC
             var type = instance as Type;
             if (type != null)
             {
-                Import(type);
+                Import(type, null);
                 return;
             }
-
-            Container.ComposeParts(instance);
+            try
+            {
+                Container.ComposeParts(instance);
+                return;
+            }
+            catch (CompositionException ex)
+            {
+                Trace.WriteLine(ex.ToString(), "MEF组合失败");
+            }
+            Import(instance.GetType(), instance);
         }
 
         /// <summary>
         /// 导入插件
         /// </summary>
         /// <param name="type"></param>
-        public static void Import(Type type)
+        public static void Import(Type type, object instance)
         {
-            const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly;
-
+            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+            if (instance == null)
+            {
+                flags |= BindingFlags.Static;
+            }
+            else
+            {
+                flags |= BindingFlags.Instance;
+            }
 
             foreach (var f in type.GetFields(flags))
             {
@@ -162,8 +177,8 @@ namespace blqw.IOC
                 {
                     continue;
                 }
-                var value = GetExportedValue(import, f.FieldType);
-                f.SetValue(null, value);
+                var value = GetExportedValue(import);
+                f.SetValue(instance, value);
             }
             var args = new object[1];
             foreach (var p in type.GetProperties(flags))
@@ -178,66 +193,182 @@ namespace blqw.IOC
                 {
                     continue;
                 }
-                var value = GetExportedValue(import, p.PropertyType);
+                var value = GetExportedValue(import);
                 args[0] = value;
-                set.Invoke(null, args);
+                set.Invoke(instance, args);
             }
         }
 
-        private static ImportDefinition GetImportDefinition(MemberInfo member, Type resultType)
+        class ImportDefinitionImpl : ImportDefinition
+        {
+            public ImportDefinitionImpl(Expression<Func<ExportDefinition, bool>> constraint, string contractName, ImportCardinality cardinality, bool isRecomposable, bool isPrerequisite, IDictionary<string, object> metadata)
+                : base(constraint, contractName, cardinality, isRecomposable, isPrerequisite, metadata)
+            {
+
+            }
+
+            /// <summary>
+            /// 导入插件的字段或属性的类型
+            /// </summary>
+            public Type MemberType { get; set; }
+
+            /// <summary>
+            /// 导出插件的类型
+            /// </summary>
+            public Type ExportedType { get; set; }
+        }
+
+        /// <summary>
+        /// 根据属性或字段极其类型,返回导入插件的描述信息
+        /// </summary>
+        /// <param name="member">属性或字段</param>
+        /// <param name="memberType">属性或字段的类型</param>
+        /// <returns></returns>
+        private static ImportDefinitionImpl GetImportDefinition(MemberInfo member, Type memberType)
         {
             var import = member.GetCustomAttribute<ImportAttribute>();
             if (import != null)
             {
-                return new ImportDefinition(
-                    GetExpression(import.ContractName, import.ContractType, resultType),
+                return new ImportDefinitionImpl(
+                    GetExpression(import.ContractName, import.ContractType, memberType),
                     import.ContractName,
                     ImportCardinality.ZeroOrOne,
                     false,
                     true,
-                    null);
+                    null)
+                {
+                    MemberType = memberType,
+                    ExportedType = memberType,
+                };
             }
             var importMany = member.GetCustomAttribute<ImportManyAttribute>();
-            if (import != null)
+            if (importMany != null)
             {
-                return new ImportDefinition(
-                    GetExpression(import.ContractName, import.ContractType, resultType),
-                    import.ContractName,
+                //获取实际类型
+                var actualType = GetActualType(memberType);
+                if (actualType == null)
+                {
+                    return null;
+                }
+                return new ImportDefinitionImpl(
+                    GetExpression(importMany.ContractName, importMany.ContractType, actualType),
+                    importMany.ContractName,
                     ImportCardinality.ZeroOrMore,
                     false,
                     true,
-                    null);
+                    null)
+                {
+                    MemberType = memberType,
+                    ExportedType = actualType,
+                };
             }
             return null;
         }
 
+        /// <summary>
+        /// 获取当前集合类型的实际元素类型
+        /// </summary>
+        /// <param name="resultType">集合类型</param>
+        /// <returns></returns>
+        private static Type GetActualType(Type resultType)
+        {
+            if (resultType == null)
+            {
+                return null;
+            }
+            if (resultType.IsArray)
+            {
+                return resultType.GetElementType();
+            }
 
+            Type actualType = null; //实际插件类型
+            if (resultType.IsInterface)
+            {
+                actualType = GetInerfaceElementType(resultType);
+            }
+            foreach (var @interface in resultType.GetInterfaces())
+            {
+                var elementType = GetInerfaceElementType(@interface);
+                if (elementType == null)
+                {
+                    continue;
+                }
+                if (actualType == elementType)
+                {
+                    continue;
+                }
+                if (actualType == typeof(object) || actualType == null)
+                {
+                    actualType = elementType;
+                }
+                else if (elementType != typeof(object))
+                {
+                    return null;
+                }
+            }
+            return actualType;
+        }
 
+        private static Type GetInerfaceElementType(Type interfaceType)
+        {
+            Type elementType = null;
+            if (interfaceType.IsGenericType)
+            {
+                var raw = interfaceType.GetGenericTypeDefinition();
+                if (raw == typeof(ICollection<>) || raw == typeof(IEnumerable<>))
+                {
+                    elementType = interfaceType.GetGenericArguments()[0];
+                }
+            }
+            else if (interfaceType == typeof(ICollection)
+                || interfaceType == typeof(IEnumerable))
+            {
+                elementType = typeof(object);
+            }
+            return elementType;
+        }
 
-        static readonly MethodInfo _ContainsKey = typeof(IDictionary<string, object>).GetMethod("ContainsKey");
+        /// <summary>
+        /// 用于描述 <see cref="IDictionary<string, object>"/> 的 ContainsKey方法
+        /// </summary>
+        private static readonly MethodInfo _ContainsKey = typeof(IDictionary<string, object>).GetMethod("ContainsKey");
 
-        static readonly MethodInfo _getItem = typeof(IDictionary<string, object>).GetProperties().Where(it => it.GetIndexParameters()?.Length > 0).Select(it => it.GetGetMethod()).First();
+        /// <summary>
+        /// 用于描述 <see cref="IDictionary<string, object>"/> 索引器的get方法
+        /// </summary>
+        private static readonly MethodInfo _getItem = typeof(IDictionary<string, object>).GetProperties().Where(it => it.GetIndexParameters()?.Length > 0).Select(it => it.GetGetMethod()).First();
 
-        private static Expression<Func<ExportDefinition, bool>> GetExpression(string name, Type contractType, Type resultType)
+        /// <summary>
+        /// 获取根据插件导入名称约定和类型约束相匹配导出插件的筛选表达式
+        /// </summary>
+        /// <param name="contractName">约定名称</param>
+        /// <param name="contractType">约定类型</param>
+        /// <param name="actualType">实际类型</param>
+        /// <returns></returns>
+        private static Expression<Func<ExportDefinition, bool>> GetExpression(string contractName, Type contractType, Type actualType)
         {
             var p = Expression.Parameter(typeof(ExportDefinition), "p");
             Expression left = null;
             Expression right = null;
-            var type = contractType ?? typeof(object);
-            if (name != null)
+            Type validType;
+            if (contractName != null)
             {
-
                 var a = Expression.Property(p, "ContractName");
-                left = Expression.Equal(a, Expression.Constant(name));
+                left = Expression.Equal(a, Expression.Constant(contractName));
+                validType = contractType ?? typeof(object);
             }
-            else if(type == null)
+            else if (contractType == null || contractType == typeof(object))
             {
-                resultType = type;
+                validType = actualType;
+            }
+            else
+            {
+                validType = contractType;
             }
 
-            if (type != typeof(object))
+            if (validType != typeof(object))
             {
-                var t = AttributedModelServices.GetTypeIdentity(type);
+                var t = AttributedModelServices.GetTypeIdentity(validType);
                 var metadata = Expression.Property(p, "Metadata");
                 var typeIdentity = Expression.Constant("TypeIdentity");
                 var containsKey = Expression.Call(metadata, _ContainsKey, typeIdentity);
@@ -249,7 +380,8 @@ namespace blqw.IOC
 
             if (left == null && right == null)
             {
-                return Expression.Lambda<Func<ExportDefinition, bool>>(Expression.Constant(true), p);
+                var @true = Expression.Constant(true);
+                return Expression.Lambda<Func<ExportDefinition, bool>>(@true, p);
             }
 
             if (left == null)
@@ -266,43 +398,68 @@ namespace blqw.IOC
             return Expression.Lambda<Func<ExportDefinition, bool>>(c, p);
         }
 
-
-        private static object GetExportedValue(ImportDefinition import, Type resultType)
+        /// <summary>
+        /// 根据导入描述获,和返回类型取导出插件的值
+        /// </summary>
+        /// <param name="import">导入描述</param>
+        /// <returns></returns>
+        private static object GetExportedValue(ImportDefinitionImpl import)
         {
             var exports = Container.GetExports(import);
 
             if (import.Cardinality == ImportCardinality.ZeroOrMore)
             {
-                var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(resultType));
-
-                foreach (var export in exports)
+                if (import.MemberType.IsArray || import.MemberType.IsInterface)
                 {
-                    var value = ConvertExportedValue(export.Value, resultType);
-                    if (value != null)
+                    var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(import.ExportedType));
+                    foreach (var export in exports)
                     {
-                        list.Add(value);
+                        object value = ConvertExportedValue(export.Value, import.ExportedType);
+                        if (value != null)
+                        {
+                            list.Add(value);
+                        }
                     }
+                    if (import.MemberType.IsArray)
+                    {
+                        var array = Array.CreateInstance(import.ExportedType, list.Count);
+                        list.CopyTo(array, 0);
+                        return array;
+                    }
+                    return list;
                 }
-                return list;
+                else
+                {
+                    dynamic list = Activator.CreateInstance(import.MemberType);
+                    foreach (var export in exports)
+                    {
+                        dynamic value = ConvertExportedValue(export.Value, import.ExportedType);
+                        if (value != null)
+                        {
+                            list.Add(value);
+                        }
+                    }
+                    return list;
+                }
             }
-            
-            return ConvertExportedValue(exports.FirstOrDefault()?.Value, resultType);
+
+            return ConvertExportedValue(exports.FirstOrDefault()?.Value, import.ExportedType);
         }
 
-        private static object ConvertExportedValue(object value, Type type)
+        private static object ConvertExportedValue(object value, Type exportedType)
         {
             if (value == null)
             {
                 return null;
             }
-            if (type.IsInstanceOfType(value))
+            if (exportedType.IsInstanceOfType(value))
             {
                 return value;
             }
             var handler = value as ExportedDelegate;
-            if (handler != null && type.IsSubclassOf(typeof(Delegate)))
+            if (handler != null && exportedType.IsSubclassOf(typeof(Delegate)))
             {
-                return handler.CreateDelegate(type);
+                return handler.CreateDelegate(exportedType);
             }
             return null;
         }

@@ -27,6 +27,9 @@ namespace blqw.IOC
             Console.WriteLine(Impl.MEF.Container);
             Console.WriteLine(program.s);
             Console.WriteLine(program.s == MyClass.test);
+
+
+
             // Console.WriteLine(s == MyClass.test);
         }
     }
