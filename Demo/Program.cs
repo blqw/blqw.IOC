@@ -24,7 +24,7 @@ namespace blqw.IOC
             var program = new Program();
             MEF.Import(program);
             Console.WriteLine(MEF.Container);
-            Console.WriteLine(Impl.MEF.Container);
+            Console.WriteLine(Impl.MEFPart.Container);
             Console.WriteLine(program.s);
             Console.WriteLine(program.s == MyClass.test);
 

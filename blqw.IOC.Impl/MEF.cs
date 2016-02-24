@@ -20,12 +20,12 @@ namespace blqw.IOC.Impl
     /// 用于执行MEF相关操作
     /// </summary>
     [Export("MEF")]
-    public sealed class MEF
+    public sealed class MEFPart
     {
         /// <summary>
         /// 字符串锁
         /// </summary>
-        const string _Lock = "O[ON}:z05i$*H75O[bJdnedei#('i_i^";
+        const string _Lock = "O[ON}:z05i$*H75O[bJdnedei#('i_i^v2";
 
         /// <summary> 
         /// 是否已初始化完成
@@ -83,7 +83,7 @@ namespace blqw.IOC.Impl
                 foreach (var mef in container.GetExportedValues<object>("MEF"))
                 {
                     var type = mef.GetType();
-                    if (type == typeof(MEF))
+                    if (type == typeof(MEFPart))
                     {
                         continue;
                     }
