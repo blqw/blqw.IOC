@@ -188,7 +188,8 @@ namespace blqw.IOC.Impl
                     continue;
                 }
                 var value = GetExportedValue(import);
-                f.SetValue(instance, value);
+                if (value != null)
+                    f.SetValue(instance, value);
             }
             var args = new object[1];
             foreach (var p in type.GetProperties(flags))
@@ -204,8 +205,11 @@ namespace blqw.IOC.Impl
                     continue;
                 }
                 var value = GetExportedValue(import);
-                args[0] = value;
-                set.Invoke(instance, args);
+                if (value != null)
+                {
+                    args[0] = value;
+                    set.Invoke(instance, args);
+                }
             }
         }
 
@@ -513,6 +517,6 @@ namespace blqw.IOC.Impl
             }
 
         }
-        
+
     }
 }
