@@ -113,22 +113,47 @@ namespace blqw.IOC.Impl
         private static ComposablePartCatalog GetCatalog()
         {
             var dir = new DirectoryCatalog(".").FullPath;
-            var files = Directory.EnumerateFiles(dir, "*.dll", SearchOption.AllDirectories)
-                .Union(Directory.EnumerateFiles(dir, "*.exe", SearchOption.AllDirectories));
+            var files = new HashSet<string>(
+                Directory.EnumerateFiles(dir, "*.dll", SearchOption.AllDirectories)
+                .Union(Directory.EnumerateFiles(dir, "*.exe", SearchOption.AllDirectories))
+                , StringComparer.OrdinalIgnoreCase);
             var logs = new AggregateCatalog();
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+            foreach (var a in assemblies)
+            {
+                LoadAssembly(a).ForEach(logs.Catalogs.Add);
+                files.Remove(a.Location);
+            }
             foreach (var file in files)
             {
                 try
                 {
-                    var asmCat = new AssemblyCatalog(file);
-                    if (asmCat.Parts.ToList().Count > 0)
-                        logs.Catalogs.Add(asmCat);
+                    var ass = Assembly.Load(File.ReadAllBytes(file));
+                    LoadAssembly(ass).ForEach(logs.Catalogs.Add);
                 }
-                catch (Exception)
-                {
-                }
+                catch { }
             }
             return logs;
+        }
+
+        /// <summary>
+        /// 从程序集中加载所有的类型
+        /// </summary>
+        /// <param name="assembly"></param>
+        /// <returns></returns>
+        private static List<ComposablePartCatalog> LoadAssembly(Assembly assembly)
+        {
+            var list = new List<ComposablePartCatalog>();
+            foreach (var type in assembly.DefinedTypes)
+            {
+                try
+                {
+                    list.Add(new TypeCatalog(type));
+                }
+                catch { }
+            }
+            return list;
         }
 
         /// <summary>
