@@ -11,6 +11,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -107,7 +108,8 @@ namespace blqw.IOC.Impl
             }
         }
 
-        /// <summary> 获取插件
+        /// <summary> 
+        /// 获取插件
         /// </summary>
         /// <returns></returns>
         private static ComposablePartCatalog GetCatalog()
@@ -122,34 +124,56 @@ namespace blqw.IOC.Impl
 
             foreach (var a in assemblies)
             {
-                LoadAssembly(a).ForEach(logs.Catalogs.Add);
-                files.Remove(a.Location);
+                if (a.IsDynamic == false)
+                {
+                    LoadAssembly(a).ForEach(logs.Catalogs.Add);
+                    files.Remove(a.Location);
+                }
             }
             foreach (var file in files)
             {
                 try
                 {
                     var ass = Assembly.Load(File.ReadAllBytes(file));
-                    LoadAssembly(ass).ForEach(logs.Catalogs.Add);
+                    if (ass.IsDynamic)
+                    {
+                        LoadAssembly(ass).ForEach(logs.Catalogs.Add);
+                    }
                 }
                 catch { }
             }
             return logs;
         }
-
-        /// <summary>
-        /// 从程序集中加载所有的类型
-        /// </summary>
-        /// <param name="assembly"></param>
-        /// <returns></returns>
+        
         private static List<ComposablePartCatalog> LoadAssembly(Assembly assembly)
         {
             var list = new List<ComposablePartCatalog>();
-            foreach (var type in assembly.DefinedTypes)
+            Type[] types;
+            try
+            {
+                types = assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                types = ex.Types;
+            }
+            catch (Exception)
+            {
+                return list;
+            }
+            foreach (var type in types)
             {
                 try
                 {
-                    list.Add(new TypeCatalog(type));
+                    if (type != null)
+                    {
+                        if (Regex.IsMatch(type.FullName, "[^a-zA-Z_`0-9.+]"))
+                        {
+                            Console.WriteLine(type.Name);
+                            continue;
+                        }
+                        list.Add(new TypeCatalog(type));
+                    }
                 }
                 catch { }
             }
