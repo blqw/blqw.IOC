@@ -19,7 +19,6 @@ namespace blqw.IOC
     /// <summary>
     /// 用于执行MEF相关操作
     /// </summary>
-    [Export("MEF")]
     public sealed class MEF
     {
         /// <summary>
@@ -30,87 +29,49 @@ namespace blqw.IOC
         /// <summary> 
         /// 是否已初始化完成
         /// </summary>
-        public static bool IsInitialized { get; private set; }
-
-        /// <summary>
-        /// 是否正在初始化
-        /// </summary>
-        /// <returns></returns>
-        public static bool IsInitializeing
-        {
-            get
-            {
-                if (IsInitialized)
-                {
-                    return false;
-                }
-                if (Monitor.IsEntered(_Lock))
-                {
-                    return true;
-                }
-                if (Monitor.TryEnter(_Lock))
-                {
-                    return false;
-                }
-                return true;
-            }
-        }
+        public static bool IsInitialized { get { return Lazy?.IsValueCreated == true; } }
 
         /// <summary>
         /// 插件容器
         /// </summary>
-        public static CompositionContainer Container { get; private set; } = Initializer();
+        public static CompositionContainer Container { get { return Lazy.Value; } }
+
+        private static readonly Lazy<CompositionContainer> Lazy = GetLazy();
+
+        private static Lazy<CompositionContainer> GetLazy()
+        {
+            Lazy<CompositionContainer> lazy;
+            lock (_Lock)
+            {
+                lazy = AppDomain.CurrentDomain.GetData(_Lock) as Lazy<CompositionContainer>;
+                if (lazy == null)
+                {
+                    if (Debugger.IsAttached
+                        && Debug.Listeners.OfType<ConsoleTraceListener>().Any() == false)
+                    {
+                        Debug.Listeners.Add(new ConsoleTraceListener(true));
+                    }
+                    AppDomain.CurrentDomain.SetData(_Lock, new Lazy<CompositionContainer>(GetContainer, true));
+                }
+            }
+            try { var x = lazy.Value; } catch { }
+            return lazy;
+        }
 
         /// <summary> 
         /// 初始化
         /// </summary>
-        public static CompositionContainer Initializer()
+        [Obsolete("自动初始化,不再需要调用该方法")]
+        public static void Initializer()
         {
-            if (IsInitialized || IsInitializeing)
-            {
-                return Container;
-            }
-            try
-            {
-                if (Debugger.IsAttached
-                    && Debug.Listeners.OfType<ConsoleTraceListener>().Any() == false)
-                {
-                    Debug.Listeners.Add(new ConsoleTraceListener(true));
-                }
-                var catalog = GetCatalog();
-                var container = new SelectionPriorityContainer(catalog);
-                var args = new object[] { container };
-                foreach (var mef in container.GetExportedValues<object>("MEF"))
-                {
-                    var type = mef.GetType();
-                    if (type == typeof(MEF))
-                    {
-                        continue;
-                    }
-                    var p = type.GetProperty("Container");
-                    if (p != null && p.PropertyType == typeof(CompositionContainer))
-                    {
-                        var set = p.GetSetMethod(true);
-                        if (set != null)
-                        {
-                            set.Invoke(null, args);
-                        }
-                    }
-                }
-                return container;
-            }
-            finally
-            {
-                IsInitialized = true;
-                if (Monitor.IsEntered(_Lock))
-                    Monitor.Exit(_Lock);
-            }
+
         }
 
-        /// <summary> 获取插件
+        /// <summary> 
+        /// 获取插件容器
         /// </summary>
         /// <returns></returns>
-        private static ComposablePartCatalog GetCatalog()
+        private static CompositionContainer GetContainer()
         {
             var dir = new DirectoryCatalog(".").FullPath;
             var files = new HashSet<string>(
@@ -134,7 +95,7 @@ namespace blqw.IOC
                 }
                 catch { }
             }
-            return logs;
+            return new SelectionPriorityContainer(logs);
         }
 
         /// <summary>
