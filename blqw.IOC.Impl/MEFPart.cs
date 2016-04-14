@@ -20,7 +20,6 @@ namespace blqw.IOC.Impl
     /// <summary>
     /// 用于执行MEF相关操作
     /// </summary>
-    [Export("MEF")]
     public sealed class MEFPart
     {
         /// <summary>
