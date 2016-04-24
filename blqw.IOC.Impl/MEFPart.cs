@@ -106,7 +106,7 @@ namespace blqw.IOC.Impl
             }
             return new SelectionPriorityContainer(logs);
         }
-        
+
         private static List<ComposablePartCatalog> LoadAssembly(Assembly assembly)
         {
             var list = new List<ComposablePartCatalog>();
@@ -130,10 +130,7 @@ namespace blqw.IOC.Impl
                     if (type != null)
                     {
                         if (Regex.IsMatch(type.FullName, "[^a-zA-Z_`0-9.+]"))
-                        {
-                            Console.WriteLine(type.Name);
                             continue;
-                        }
                         list.Add(new TypeCatalog(type));
                     }
                 }
