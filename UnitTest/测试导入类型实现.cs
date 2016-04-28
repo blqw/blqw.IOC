@@ -10,10 +10,6 @@ namespace blqw.IOC
         [Export("UnitTest5", typeof(ICloneable))]
         class MyClass : ICloneable
         {
-            public MyClass()
-            {
-
-            }
             public object Clone()
             {
                 return "UnitTest5";

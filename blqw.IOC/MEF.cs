@@ -101,7 +101,10 @@ namespace blqw.IOC
                         LoadAssembly(ass).ForEach(logs.Catalogs.Add);
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine(ex, "MEF部分插件加载失败1");
+                }
             }
             return new SelectionPriorityContainer(logs);
         }
@@ -123,8 +126,9 @@ namespace blqw.IOC
             {
                 types = ex.Types;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Trace.WriteLine(ex, "MEF部分插件加载失败2");
                 return list;
             }
             foreach (var type in types)
@@ -140,7 +144,10 @@ namespace blqw.IOC
                         list.Add(new TypeCatalog(type));
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine(ex, "MEF部分插件加载失败3");
+                }
             }
             return list;
         }
