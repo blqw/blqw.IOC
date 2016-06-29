@@ -9,8 +9,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "blqw.IOC", "blqw.IOC\blqw.I
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTest", "UnitTest\UnitTest.csproj", "{3851DD5D-D103-41C6-AA20-A1D1399345DD}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "其他项", "其他项", "{4E12B83E-9E7C-407A-8EFE-14BEC1E6D628}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{4E12B83E-9E7C-407A-8EFE-14BEC1E6D628}"
 	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
 		readme.md = readme.md
 	EndProjectSection
 EndProject
