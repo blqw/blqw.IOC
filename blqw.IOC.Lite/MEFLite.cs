@@ -20,7 +20,7 @@ namespace blqw.IOC
     /// <summary>
     /// 用于执行MEF相关操作
     /// </summary>
-    public static class MEFLite
+    static class MEFLite
     {
         /// <summary>
         /// 字符串锁
