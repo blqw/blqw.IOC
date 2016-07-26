@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
 using System.ComponentModel.Composition.Primitives;
+using System.ComponentModel.Composition.ReflectionModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -211,6 +212,7 @@ namespace blqw.IOC
             catch (CompositionException ex)
             {
                 Trace.WriteLine(ex.ToString(), "MEF组合失败");
+                Debug.Assert(true, "MEF组合失败", ex.ToString());
             }
             Import(instance.GetType(), instance);
         }
@@ -319,6 +321,7 @@ namespace blqw.IOC
                 {
                     return null;
                 }
+
                 return new ImportDefinitionImpl(
                     GetExpression(importMany.ContractName, importMany.ContractType, actualType),
                     importMany.ContractName,
@@ -398,12 +401,12 @@ namespace blqw.IOC
         }
 
         /// <summary>
-        /// 用于描述 <see cref="IDictionary<string, object>"/> 的 ContainsKey方法
+        /// 用于描述 <see cref="IDictionary{TKey, TValue}"/> 的 ContainsKey方法
         /// </summary>
         private static readonly MethodInfo _ContainsKey = typeof(IDictionary<string, object>).GetMethod("ContainsKey");
 
         /// <summary>
-        /// 用于描述 <see cref="IDictionary<string, object>"/> 索引器的get方法
+        /// 用于描述 <see cref="IDictionary{TKey, TValue}"/> 索引器的get方法
         /// </summary>
         private static readonly MethodInfo _getItem = typeof(IDictionary<string, object>).GetProperties().Where(it => it.GetIndexParameters()?.Length > 0).Select(it => it.GetGetMethod()).First();
 
@@ -420,6 +423,7 @@ namespace blqw.IOC
             Expression left = null;
             Expression right = null;
             Type validType;
+
             if (contractName != null)
             {
                 var a = Expression.Property(p, "ContractName");
@@ -439,7 +443,7 @@ namespace blqw.IOC
             {
                 var t = AttributedModelServices.GetTypeIdentity(validType);
                 var metadata = Expression.Property(p, "Metadata");
-                var typeIdentity = Expression.Constant("TypeIdentity");
+                var typeIdentity = Expression.Constant("ExportTypeIdentity");
                 var containsKey = Expression.Call(metadata, _ContainsKey, typeIdentity);
 
                 var getItem = Expression.Call(metadata, _getItem, typeIdentity);
@@ -503,10 +507,18 @@ namespace blqw.IOC
                     dynamic list = Activator.CreateInstance(import.MemberType);
                     foreach (var export in exports)
                     {
-                        dynamic value = ConvertExportedValue(export.Value, import.ExportedType);
-                        if (value != null)
+                        try
                         {
-                            list.Add(value);
+                            dynamic value = ConvertExportedValue(export.Value, import.ExportedType);
+                            if (value != null)
+                            {
+                                list.Add(value);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.WriteLine(ex.ToString(), "MEF组合失败2");
+                            Debug.Assert(true, "MEF组合失败2", ex.ToString());
                         }
                     }
                     return list;
