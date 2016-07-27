@@ -42,6 +42,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ComponentServices.cs" />
+    <Compile Include="DefalutComponent.cs" />
     <Compile Include="MEF.cs" />
     <Compile Include="PlugIn.cs">
       <SubType>Component</SubType>
@@ -55,6 +57,9 @@
     <None Include="blqw.IOC.nuspec" />
     <None Include="nuget-pack.bat" />
     <None Include="Readme.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Interface\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
