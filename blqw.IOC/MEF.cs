@@ -37,14 +37,6 @@ namespace blqw.IOC
         /// </summary>
         public static CompositionContainer Container { get; }
         
-        /// <summary> 
-        /// 初始化
-        /// </summary>
-        [Obsolete("自动初始化,不再需要调用该方法")]
-        public static void Initializer()
-        {
-
-        }
 
         private static bool Add(this HashSet<string> loaded, Assembly assembly)
         {
@@ -422,7 +414,7 @@ namespace blqw.IOC
             {
                 var t = AttributedModelServices.GetTypeIdentity(validType);
                 var metadata = Expression.Property(p, "Metadata");
-                var typeIdentity = Expression.Constant("TypeIdentity");
+                var typeIdentity = Expression.Constant("ExportTypeIdentity");
                 var containsKey = Expression.Call(metadata, _ContainsKey, typeIdentity);
 
                 var getItem = Expression.Call(metadata, _getItem, typeIdentity);
