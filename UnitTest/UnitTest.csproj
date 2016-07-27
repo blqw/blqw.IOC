@@ -62,10 +62,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\blqw.IOC.Lite\blqw.IOC.Lite.csproj">
-      <Project>{d069a888-1d20-4629-b12f-a45c14e15daf}</Project>
-      <Name>blqw.IOC.Lite</Name>
-    </ProjectReference>
     <ProjectReference Include="..\blqw.IOC\blqw.IOC.csproj">
       <Project>{bda80db5-3f1f-410d-b5bc-f02c366b1e2b}</Project>
       <Name>blqw.IOC</Name>

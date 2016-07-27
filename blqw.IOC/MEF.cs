@@ -22,44 +22,21 @@ namespace blqw.IOC
     /// </summary>
     public static class MEF
     {
-        /// <summary>
-        /// 字符串锁
-        /// </summary>
-        const string _Lock = "O[ON}:z05i$*H75O[bJdnedei#('i_i^v2";
-
+        static MEF()
+        {
+            Container = GetContainer();
+            IsInitialized = true;
+        }
         /// <summary> 
         /// 是否已初始化完成
         /// </summary>
-        public static bool IsInitialized { get { return Lazy?.IsValueCreated == true; } }
+        public static bool IsInitialized { get; }
 
         /// <summary>
         /// 插件容器
         /// </summary>
-        public static CompositionContainer Container { get { return Lazy.Value; } }
-
-        private static readonly Lazy<CompositionContainer> Lazy = GetLazy();
-
-        private static Lazy<CompositionContainer> GetLazy()
-        {
-            Lazy<CompositionContainer> lazy;
-            lock (_Lock)
-            {
-                lazy = AppDomain.CurrentDomain.GetData(_Lock) as Lazy<CompositionContainer>;
-                if (lazy == null)
-                {
-                    if (Debugger.IsAttached
-                        && Debug.Listeners.OfType<ConsoleTraceListener>().Any() == false)
-                    {
-                        Debug.Listeners.Add(new ConsoleTraceListener(true));
-                    }
-                    lazy = new Lazy<CompositionContainer>(GetContainer, true);
-                    AppDomain.CurrentDomain.SetData(_Lock, lazy);
-                }
-            }
-            try { var x = lazy.Value; } catch { }
-            return lazy;
-        }
-
+        public static CompositionContainer Container { get; }
+        
         /// <summary> 
         /// 初始化
         /// </summary>
