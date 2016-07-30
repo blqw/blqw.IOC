@@ -12,7 +12,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
     <releaseNotes>
-      基于微软MEF封装的IOC框架  
+      修复默认插件为空的bug
     </releaseNotes>
     <copyright>Copyright 2016</copyright>
     <tags>MEF IOC PlugIn blqw</tags>
