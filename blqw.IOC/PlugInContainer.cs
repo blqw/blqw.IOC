@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.Composition.Hosting;
 using System.ComponentModel.Composition.Primitives;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,14 +26,16 @@ namespace blqw.IOC
         /// </summary>
         private readonly CompositionContainer _Container;
 
+        private readonly List<Exception> _Exceptions;
         public PlugInContainer()
         {
             _CataLog = new AggregateCatalog();
             _Container = new CompositionContainer(_CataLog);
+            _Exceptions = new List<Exception>();
         }
 
         public PlugInContainer(ComposablePartCatalog catalog)
-            :this()
+            : this()
         {
             AddCatalog(catalog);
         }
@@ -72,7 +75,7 @@ namespace blqw.IOC
                 return (PlugIn)Components[name];
             }
         }
-        
+
         /// <summary>
         /// 获取插件导出项
         /// </summary>
@@ -174,7 +177,7 @@ namespace blqw.IOC
         {
             return GetExports(null, typeof(T)).Cast<T>();
         }
-        
+
         /// <summary>
         /// 获取优先级最高的一个插件的导出项
         /// </summary>
@@ -241,7 +244,7 @@ namespace blqw.IOC
         {
             return (T)GetExport(null, typeof(T));
         }
-        
+
         /// <summary>
         /// 添加插件组件部件目录
         /// </summary>
@@ -266,11 +269,33 @@ namespace blqw.IOC
                     var part = p.CreatePart();
                     foreach (var definition in part.ExportDefinitions)
                     {
-                        var plugin = new PlugIn(part, definition);
-                        plugin.IsComposition = true;
-                        Add(plugin);
+                        try
+                        {
+                            var plugin = new PlugIn(part, definition);
+                            plugin.IsComposition = true;
+                            Add(plugin);
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.WriteLine(ex.ToString(), "插件载入失败");
+                        }
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// 载入插件的异常
+        /// </summary>
+        public AggregateException Exceptions
+        {
+            get
+            {
+                if (_Exceptions == null)
+                {
+                    return null;
+                }
+                return new AggregateException("部分插件加载出现错误", _Exceptions);
             }
         }
 

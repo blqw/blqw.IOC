@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
 using System.ComponentModel.Composition.Primitives;
+using System.ComponentModel.Composition.ReflectionModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -277,8 +278,9 @@ namespace blqw.IOC
             var import = member.GetCustomAttribute<ImportAttribute>();
             if (import != null)
             {
+                var name = import.ContractName ?? AttributedModelServices.GetTypeIdentity(import.ContractType ?? memberType);
                 return new ImportDefinitionImpl(
-                    GetExpression(import.ContractName, import.ContractType, memberType),
+                    GetExpression(name, import.ContractType ?? memberType),
                     import.ContractName,
                     ImportCardinality.ZeroOrOne,
                     false,
@@ -292,14 +294,14 @@ namespace blqw.IOC
             var importMany = member.GetCustomAttribute<ImportManyAttribute>();
             if (importMany != null)
             {
-                //获取实际类型
-                var actualType = GetActualType(memberType);
-                if (actualType == null)
+                var t = importMany.ContractType ?? GetActualType(memberType);
+                if (t == null)
                 {
                     return null;
                 }
+                var name = importMany.ContractName ?? AttributedModelServices.GetTypeIdentity(t);
                 return new ImportDefinitionImpl(
-                    GetExpression(importMany.ContractName, importMany.ContractType, actualType),
+                    GetExpression(name, t),
                     importMany.ContractName,
                     ImportCardinality.ZeroOrMore,
                     false,
@@ -307,7 +309,7 @@ namespace blqw.IOC
                     null)
                 {
                     MemberType = memberType,
-                    ExportedType = actualType,
+                    ExportedType = t,
                 };
             }
             return null;
@@ -393,37 +395,25 @@ namespace blqw.IOC
         /// <param name="contractType">约定类型</param>
         /// <param name="actualType">实际类型</param>
         /// <returns></returns>
-        private static Expression<Func<ExportDefinition, bool>> GetExpression(string contractName, Type contractType, Type actualType)
+        private static Expression<Func<ExportDefinition, bool>> GetExpression(string contractName, Type contractType)
         {
             var p = Expression.Parameter(typeof(ExportDefinition), "p");
             Expression left = null;
             Expression right = null;
-            Type validType;
-            if (contractName != null)
-            {
-                var a = Expression.Property(p, "ContractName");
-                left = Expression.Equal(a, Expression.Constant(contractName));
-                validType = contractType ?? typeof(object);
-            }
-            else if (contractType == null || contractType == typeof(object))
-            {
-                validType = actualType;
-            }
-            else
-            {
-                validType = contractType;
-            }
+            var typeid = AttributedModelServices.GetTypeIdentity(contractType);
+            var a = Expression.Property(p, "ContractName");
+            left = Expression.Equal(a, Expression.Constant(contractName ?? typeid));
 
-            if (validType != typeof(object))
+
+            if (contractType != typeof(object))
             {
-                var t = AttributedModelServices.GetTypeIdentity(validType);
                 var metadata = Expression.Property(p, "Metadata");
                 var typeIdentity = Expression.Constant("ExportTypeIdentity");
                 var containsKey = Expression.Call(metadata, _ContainsKey, typeIdentity);
 
                 var getItem = Expression.Call(metadata, _getItem, typeIdentity);
-
-                right = Expression.AndAlso(containsKey, Expression.Equal(getItem, Expression.Constant(t)));
+                var equals = typeof(string).GetMethod("Equals", new[] { typeof(object) });
+                right = Expression.AndAlso(containsKey, Expression.Call(Expression.Constant(typeid), equals, getItem));
             }
 
             if (left == null && right == null)
@@ -453,6 +443,7 @@ namespace blqw.IOC
         /// <returns></returns>
         private static object GetExportedValue(ImportDefinitionImpl import)
         {
+
             var exports = Container.GetExports(import);
 
             if (import.Cardinality == ImportCardinality.ZeroOrMore)
@@ -490,9 +481,9 @@ namespace blqw.IOC
                                 list.Add(value);
                             }
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            
+                            Trace.WriteLine(ex.ToString(), "MEF组合失败2");
                         }
                     }
                     return list;
@@ -534,14 +525,15 @@ namespace blqw.IOC
             {
                 //var exports = base.GetExportsCore(definition, atomicComposition);
                 var exports = base.GetExportsCore(
-                                new ImportDefinition(
-                                    definition.Constraint,
-                                    definition.ContractName,
-                                    ImportCardinality.ZeroOrMore,
-                                    definition.IsRecomposable,
-                                    definition.IsPrerequisite,
-                                    definition.Metadata
-                                ), atomicComposition);
+                        new ImportDefinition(
+                            definition.Constraint,
+                            definition.ContractName,
+                            ImportCardinality.ZeroOrMore,
+                            definition.IsRecomposable,
+                            definition.IsPrerequisite,
+                            definition.Metadata
+                        ), atomicComposition);
+                Trace.WriteLine(definition.Constraint.ToString(), "1");
 
                 if (definition.Cardinality == ImportCardinality.ZeroOrMore)
                 {
