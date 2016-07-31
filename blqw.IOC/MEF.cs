@@ -482,10 +482,17 @@ namespace blqw.IOC
                     dynamic list = Activator.CreateInstance(import.MemberType);
                     foreach (var export in exports)
                     {
-                        dynamic value = ConvertExportedValue(export.Value, import.ExportedType);
-                        if (value != null)
+                        try
                         {
-                            list.Add(value);
+                            dynamic value = ConvertExportedValue(export.Value, import.ExportedType);
+                            if (value != null)
+                            {
+                                list.Add(value);
+                            }
+                        }
+                        catch
+                        {
+                            
                         }
                     }
                     return list;
