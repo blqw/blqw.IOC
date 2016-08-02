@@ -79,27 +79,19 @@ namespace blqw.IOC
         /// 用于将Json字符串转为实体对象的方法
         /// </summary>
         [Import("ToJsonObject")]
-        public readonly static Func<Type, string, object> ToJsonObject =
-            delegate (Type type, string json)
-            {
-                return Json.Convert(json, type);
-            };
+        public static readonly Func<Type, string, object> ToJsonObject = (type, json) => Json.Convert(json, type);
 
         /// <summary> 
         /// 用于将Json字符串转为实体对象的方法
         /// </summary>
         [Import("ToJsonString")]
-        public readonly static Func<object, string> ToJsonString =
-            delegate (object obj)
-            {
-                return Json.ToString(obj);
-            };
+        public static readonly Func<object, string> ToJsonString = obj => Json.ToString(obj);
 
 
         /// <summary> 获取动态类型
         /// </summary>
         [Import("GetDynamic")]
-        public static readonly Func<object, dynamic> GetDynamic;
+        public static readonly Func<object, dynamic> GetDynamic = o => o;
 
 
 
