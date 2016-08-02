@@ -16,7 +16,7 @@ namespace blqw.IOC
     {
         static ComponentServices()
         {
-            MEF.Import(typeof(ComponentServices));
+            MEF.Import(typeof(ComponentServices));  
         }
 
 
