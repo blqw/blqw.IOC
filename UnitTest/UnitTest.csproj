@@ -54,6 +54,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="测试有无法导入的插件.cs" />
     <Compile Include="测试默认插件.cs" />
     <Compile Include="测试导入类型实现.cs" />
     <Compile Include="测试导入插件组.cs" />
