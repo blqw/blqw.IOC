@@ -54,7 +54,6 @@
     <Compile Include="Verifier\Verifier.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="blqw.IOC.nuspec" />
     <None Include="nuget-pack.bat" />
     <None Include="Readme.md" />
   </ItemGroup>

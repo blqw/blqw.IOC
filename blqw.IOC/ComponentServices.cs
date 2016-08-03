@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.Composition;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace blqw.IOC
 {
@@ -14,22 +10,15 @@ namespace blqw.IOC
     /// </summary>
     public static class ComponentServices
     {
-        static ComponentServices()
-        {
-            MEF.Import(typeof(ComponentServices));  
-        }
-
-
         [Import("CreateGetter")]
         public static readonly Func<MemberInfo, Func<object, object>> GetGeter = m =>
         {
-            if (m.MemberType == MemberTypes.Field)
+            switch (m.MemberType)
             {
-                return ((FieldInfo)m).GetValue;
-            }
-            else if (m.MemberType == MemberTypes.Property)
-            {
-                return ((PropertyInfo)m).GetValue;
+                case MemberTypes.Field:
+                    return ((FieldInfo)m).GetValue;
+                case MemberTypes.Property:
+                    return ((PropertyInfo)m).GetValue;
             }
             return null;
         };
@@ -37,24 +26,28 @@ namespace blqw.IOC
         [Import("CreateSetter")]
         public static readonly Func<MemberInfo, Action<object, object>> GetSeter = m =>
         {
-            if (m.MemberType == MemberTypes.Field)
+            switch (m.MemberType)
             {
-                return ((FieldInfo)m).SetValue;
-            }
-            else if (m.MemberType == MemberTypes.Property)
-            {
-                return ((PropertyInfo)m).SetValue;
+                case MemberTypes.Field:
+                    return ((FieldInfo)m).SetValue;
+                case MemberTypes.Property:
+                    return ((PropertyInfo)m).SetValue;
             }
             return null;
         };
 
-        /// <summary> 
+        /// <summary>
         /// 获取默认值
         /// </summary>
         [Import("GetDefaultValue")]
-        public static readonly Func<Type, object> GetDefaultValue = t => t == null || t.IsValueType == false || t.IsGenericTypeDefinition || Nullable.GetUnderlyingType(t) != null ? null : Activator.CreateInstance(t);
+        public static readonly Func<Type, object> GetDefaultValue =
+            t =>
+                t == null || t.IsValueType == false || t.IsGenericTypeDefinition ||
+                Nullable.GetUnderlyingType(t) != null
+                    ? null
+                    : Activator.CreateInstance(t);
 
-        /// <summary> 
+        /// <summary>
         /// 获取转换器
         /// </summary>
         [Import("Convert3")]
@@ -69,32 +62,62 @@ namespace blqw.IOC
         [Import("BinaryConverter")]
         public static readonly IFormatterConverter Binary;
 
-        /// <summary> 
+        /// <summary>
         /// 包装反射对象
         /// </summary>
         [Import("MemberInfoWrapper")]
         public static readonly Func<MemberInfo, MemberInfo> WrapMamber = m => m;
 
-        /// <summary> 
+        /// <summary>
         /// 用于将Json字符串转为实体对象的方法
         /// </summary>
         [Import("ToJsonObject")]
-        public static readonly Func<Type, string, object> ToJsonObject = (type, json) => Json.Convert(json, type);
+        public static readonly Func<Type, string, object> ToJsonObject =
+            (type, json) =>
+            {
+                if (Json != null)
+                    return Json.Convert(json, type);
 
-        /// <summary> 
+                var method = Type.GetType("Newtonsoft.Json.JsonConvert, Newtonsoft.Json")?.GetMethod("DeserializeObject", new[] { typeof(string), typeof(Type) });
+                if (method?.ReturnType == typeof(object) && method?.IsStatic == true)
+                {
+                    var dele = (Func<string, Type, object>)method.CreateDelegate(typeof(Func<string, Type, object>));
+
+                    typeof(ComponentServices).GetField("ToJsonObject").SetValue(null, ((Func<Type, string, object>)((t, j) => dele(j, t))));
+                    return ToJsonObject(type, json);
+                }
+                throw new NotSupportedException($"{nameof(ComponentServices)}.{nameof(Json)}为null,该功能无法使用");
+            };
+
+
+        /// <summary>
         /// 用于将Json字符串转为实体对象的方法
         /// </summary>
         [Import("ToJsonString")]
-        public static readonly Func<object, string> ToJsonString = obj => Json.ToString(obj);
+        public static readonly Func<object, string> ToJsonString = obj =>
+        {
+            if (Json != null) return Json.ToString(obj);
+
+            var method = Type.GetType("Newtonsoft.Json.JsonConvert, Newtonsoft.Json")?.GetMethod("SerializeObject", new[] { typeof(object) });
+            if (method?.ReturnType == typeof(string) && method?.IsStatic == true)
+            {
+                var dele = method.CreateDelegate(typeof(Func<object, string>));
+                typeof(ComponentServices).GetField("ToJsonString").SetValue(null, dele);
+                return ToJsonString(obj);
+            }
+            throw new NotSupportedException($"{nameof(ComponentServices)}.{nameof(Json)}为null,该功能无法使用");
+        };
 
 
-        /// <summary> 获取动态类型
+        /// <summary>
+        /// 获取动态类型
         /// </summary>
         [Import("GetDynamic")]
         public static readonly Func<object, dynamic> GetDynamic = o => o;
 
-
-
-
+        static ComponentServices()
+        {
+            MEF.Import(typeof(ComponentServices));
+        }
     }
 }

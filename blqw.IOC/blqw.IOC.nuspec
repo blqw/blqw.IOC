@@ -12,7 +12,8 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
     <releaseNotes>
-      修复默认插件为空的bug
+      2016.08.03
+      `ComponentServices.ToJsonObject`和`ComponentServices.ToJsonString`2个方法在没有插件时,默认会寻找`Newtonsoft.Json`
     </releaseNotes>
     <copyright>Copyright 2016</copyright>
     <tags>MEF IOC PlugIn blqw</tags>
