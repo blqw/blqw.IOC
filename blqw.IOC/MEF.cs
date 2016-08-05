@@ -533,7 +533,7 @@ namespace blqw.IOC
                             definition.IsPrerequisite,
                             definition.Metadata
                         ), atomicComposition);
-                Trace.WriteLine(definition.Constraint.ToString(), "1");
+                //Trace.WriteLine(definition.Constraint.ToString(), "1");
 
                 if (definition.Cardinality == ImportCardinality.ZeroOrMore)
                 {
