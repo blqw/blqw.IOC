@@ -1,5 +1,7 @@
 ﻿using System;
 using System.ComponentModel.Composition;
+using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.Serialization;
 
@@ -15,10 +17,34 @@ namespace blqw.IOC
         {
             switch (m.MemberType)
             {
-                case MemberTypes.Field:
-                    return ((FieldInfo)m).GetValue;
                 case MemberTypes.Property:
-                    return ((PropertyInfo)m).GetValue;
+                    {
+                        var property = (PropertyInfo)m;
+                        if (property.GetIndexParameters().Length > 0)
+                        {
+                            return null;
+                        }
+                        var o = Expression.Parameter(typeof(object), "o");
+                        Debug.Assert(property.DeclaringType != null, "property.DeclaringType != null");
+                        var cast = Expression.Convert(o, property.DeclaringType);
+                        var p = Expression.Property(cast, property);
+                        if (property.CanRead)
+                        {
+                            var ret = Expression.Convert(p, typeof(object));
+                            return Expression.Lambda<Func<object, object>>(ret, o).Compile();
+                        }
+                    }
+                    break;
+                case MemberTypes.Field:
+                    {
+                        var field = (FieldInfo)m;
+                        var o = Expression.Parameter(typeof(object), "o");
+                        Debug.Assert(field.DeclaringType != null, "field.DeclaringType != null");
+                        var cast = Expression.Convert(o, field.DeclaringType);
+                        var p = Expression.Field(cast, field);
+                        var ret = Expression.Convert(p, typeof(object));
+                        return Expression.Lambda<Func<object, object>>(ret, o).Compile();
+                    }
             }
             return null;
         };
@@ -28,10 +54,60 @@ namespace blqw.IOC
         {
             switch (m.MemberType)
             {
-                case MemberTypes.Field:
-                    return ((FieldInfo)m).SetValue;
                 case MemberTypes.Property:
-                    return ((PropertyInfo)m).SetValue;
+                    {
+                        var property = (PropertyInfo)m;
+                        var type = property.PropertyType;
+                        if (property.GetIndexParameters().Length > 0)
+                        {
+                            return null;
+                        }
+                        var o = Expression.Parameter(typeof(object), "o");
+                        Debug.Assert(property.DeclaringType != null, "property.DeclaringType != null");
+                        var cast = Expression.Convert(o, property.DeclaringType);
+                        var p = Expression.Property(cast, property);
+                        if (property.CanWrite)
+                        {
+                            var v = Expression.Parameter(typeof(object), "v");
+                            var val = Expression.Convert(v, type);
+                            var assign = Expression.MakeBinary(ExpressionType.Assign, p, val);
+                            var ret = Expression.Convert(assign, typeof(object));
+                            return Expression.Lambda<Action<object, object>>(ret, o, v).Compile();
+                        }
+                        if (property.DeclaringType.IsGenericType &&
+                            property.DeclaringType.Name.StartsWith("<>f__AnonymousType")) //匿名类型
+                        {
+                            var fieldName = $"<{property.Name}>i__Field";
+                            m = property.DeclaringType.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+                            if (m != null)
+                            {
+                                goto case MemberTypes.Field;
+                            }
+                        }
+                    }
+                    break;
+                case MemberTypes.Field:
+                    {
+                        var field = (FieldInfo)m;
+                        if (field.IsInitOnly)
+                        {
+                            return field.SetValue;
+                        }
+                        var type = field.FieldType;
+                        var o = Expression.Parameter(typeof(object), "o");
+                        Debug.Assert(field.DeclaringType != null, "field.DeclaringType != null");
+                        var cast = Expression.Convert(o, field.DeclaringType);
+                        var p = Expression.Field(cast, field); 
+                        if (field.IsLiteral == false)
+                        {
+                            var v = Expression.Parameter(typeof(object), "v");
+                            var val = Expression.Convert(v, type);
+                            var assign = Expression.MakeBinary(ExpressionType.Assign, p, val);
+                            var ret2 = Expression.Convert(assign, typeof(object));
+                            return Expression.Lambda<Action<object, object>>(ret2, o, v).Compile();
+                        }
+                    }
+                    break;
             }
             return null;
         };

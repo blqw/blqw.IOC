@@ -1,4 +1,7 @@
 ﻿# 基于微软MEF组件的插件管理组件
+#### 2016.08.10
+* 优化默认插件的行为
+
 #### 2016.08.03
 * `ComponentServices.ToJsonObject`和`ComponentServices.ToJsonString`2个方法在没有插件时,默认会寻找`Newtonsoft.Json`
 

@@ -12,8 +12,8 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
     <releaseNotes>
-      2016.08.03
-      `ComponentServices.ToJsonObject`和`ComponentServices.ToJsonString`2个方法在没有插件时,默认会寻找`Newtonsoft.Json`
+      2016.08.10
+      优化默认插件的行为
     </releaseNotes>
     <copyright>Copyright 2016</copyright>
     <tags>MEF IOC PlugIn blqw</tags>
