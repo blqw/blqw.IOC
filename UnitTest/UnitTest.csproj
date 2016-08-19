@@ -58,6 +58,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="测试ComponentContainer.cs" />
     <Compile Include="测试json的默认行为.cs" />
     <Compile Include="测试有无法导入的插件.cs" />
     <Compile Include="测试默认插件.cs" />

@@ -110,11 +110,11 @@ namespace blqw.IOC
         }
 
         /// <summary>
-        /// 判断是否是可接受类型
+        /// 判断是否是可用类型
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public bool IsAcceptType(Type type)
+        public bool IsTrueOf(Type type)
         {
             if (type == null)
             {

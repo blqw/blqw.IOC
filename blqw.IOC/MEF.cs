@@ -195,8 +195,9 @@ namespace blqw.IOC
         /// <summary>
         /// 导入插件
         /// </summary>
-        /// <param name="type"></param>
-        public static void Import(Type type, object instance)
+        /// <param name="type">  </param>
+        /// <param name="instance"> </param>
+        public static void Import(Type type, object instance = null)
         {
             var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
             if (instance == null)
@@ -275,44 +276,63 @@ namespace blqw.IOC
         /// <returns></returns>
         private static ImportDefinitionImpl GetImportDefinition(MemberInfo member, Type memberType)
         {
-            var import = member.GetCustomAttribute<ImportAttribute>();
-            if (import != null)
+            return GetImportDefinition(member.GetCustomAttribute<ImportAttribute>(), memberType)
+                   ?? GetImportDefinition(member.GetCustomAttribute<ImportManyAttribute>(), memberType);
+        }
+
+        /// <summary>
+        /// 根据 <see cref="ImportAttribute"/>,返回导入插件的描述信息
+        /// </summary>
+        /// <param name="import">导入描述</param>
+        /// <param name="memberType">属性或字段的类型</param>
+        /// <returns></returns>
+        private static ImportDefinitionImpl GetImportDefinition(ImportAttribute import, Type memberType)
+        {
+            if (import == null)
+                return null;
+
+            var name = import.ContractName ?? AttributedModelServices.GetTypeIdentity(import.ContractType ?? memberType);
+            return new ImportDefinitionImpl(
+                GetExpression(name, import.ContractType ?? memberType),
+                import.ContractName,
+                ImportCardinality.ZeroOrOne,
+                false,
+                true,
+                null)
             {
-                var name = import.ContractName ?? AttributedModelServices.GetTypeIdentity(import.ContractType ?? memberType);
-                return new ImportDefinitionImpl(
-                    GetExpression(name, import.ContractType ?? memberType),
-                    import.ContractName,
-                    ImportCardinality.ZeroOrOne,
-                    false,
-                    true,
-                    null)
-                {
-                    MemberType = memberType,
-                    ExportedType = memberType,
-                };
-            }
-            var importMany = member.GetCustomAttribute<ImportManyAttribute>();
-            if (importMany != null)
+                MemberType = memberType,
+                ExportedType = memberType,
+            };
+        }
+
+        /// <summary>
+        /// 根据 <see cref="ImportManyAttribute"/>,返回导入插件的描述信息
+        /// </summary>
+        /// <param name="import">导入描述</param>
+        /// <param name="memberType">属性或字段的类型</param>
+        /// <returns></returns>
+        private static ImportDefinitionImpl GetImportDefinition(ImportManyAttribute import, Type memberType)
+        {
+            if (import == null)
+                return null;
+
+            var t = import.ContractType ?? GetActualType(memberType);
+            if (t == null)
             {
-                var t = importMany.ContractType ?? GetActualType(memberType);
-                if (t == null)
-                {
-                    return null;
-                }
-                var name = importMany.ContractName ?? AttributedModelServices.GetTypeIdentity(t);
-                return new ImportDefinitionImpl(
-                    GetExpression(name, t),
-                    importMany.ContractName,
-                    ImportCardinality.ZeroOrMore,
-                    false,
-                    true,
-                    null)
-                {
-                    MemberType = memberType,
-                    ExportedType = t,
-                };
+                return null;
             }
-            return null;
+            var name = import.ContractName ?? AttributedModelServices.GetTypeIdentity(t);
+            return new ImportDefinitionImpl(
+                GetExpression(name, t),
+                import.ContractName,
+                ImportCardinality.ZeroOrMore,
+                false,
+                true,
+                null)
+            {
+                MemberType = memberType,
+                ExportedType = t,
+            };
         }
 
         /// <summary>

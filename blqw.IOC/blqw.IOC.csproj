@@ -50,6 +50,7 @@
     </Compile>
     <Compile Include="PlugInContainer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ComponentContainer.cs" />
     <Compile Include="Verifier\Verified.cs" />
     <Compile Include="Verifier\Verifier.cs" />
   </ItemGroup>

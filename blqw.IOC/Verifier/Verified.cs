@@ -23,18 +23,12 @@ namespace blqw.IOC
         /// <summary>
         /// 创建异常对象的委托
         /// </summary>
-        private Func<string, Exception> _CreateException;
+        private readonly Func<string, Exception> _CreateException;
 
         /// <summary>
         /// 正确为true,否则为false
         /// </summary>
-        public bool Result
-        {
-            get
-            {
-                return _CreateException == null;
-            }
-        }
+        public bool Result => _CreateException == null;
 
         /// <summary>
         /// 当验证结果为false时,返回异常对象,否则为null

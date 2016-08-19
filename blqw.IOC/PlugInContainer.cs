@@ -19,19 +19,20 @@ namespace blqw.IOC
         /// <summary>
         /// 插件部件目录
         /// </summary>
-        private readonly AggregateCatalog _CataLog;
+        private readonly AggregateCatalog _cataLog;
 
         /// <summary>
         /// 插件部件容器
         /// </summary>
-        private readonly CompositionContainer _Container;
+        private readonly CompositionContainer _container;
 
-        private readonly List<Exception> _Exceptions;
+        private readonly List<Exception> _exceptions;
+
         public PlugInContainer()
         {
-            _CataLog = new AggregateCatalog();
-            _Container = new CompositionContainer(_CataLog);
-            _Exceptions = new List<Exception>();
+            _cataLog = new AggregateCatalog();
+            _container = new CompositionContainer(_cataLog);
+            _exceptions = new List<Exception>();
         }
 
         public PlugInContainer(ComposablePartCatalog catalog)
@@ -103,7 +104,7 @@ namespace blqw.IOC
                 }
                 yield break;
             }
-            foreach (var export in _Container.GetExports(type, null, name))
+            foreach (var export in _container.GetExports(type, null, name))
             {
                 var handler = export.Value as ExportedDelegate;
                 if (handler != null)
@@ -184,6 +185,7 @@ namespace blqw.IOC
         /// <param name="name">插件名称</param>
         /// <param name="type">插件类型</param>
         /// <returns></returns>
+        /// <exception cref="ArgumentException">当 <paramref name="name"/> 为 `null` 时, <paramref name="type"/> 不能为`null`或`<see cref="object"/>`.</exception>
         public object GetExport(string name, Type type)
         {
             if (type == typeof(object))
@@ -192,14 +194,13 @@ namespace blqw.IOC
             }
             if (name == null && type == null)
             {
-                throw new ArgumentException($"当{nameof(name)}为null时,{nameof(type)}不能为System.Object");
+                throw new ArgumentException($"当{nameof(name)}为null时,{nameof(type)}不能为`null`或`System.Object`");
             }
-            var plugin = this.Where(p => (name == null || name == p.Name) && (type == null || p.IsAcceptType(type))).Max();
-            if (plugin == null)
+            foreach (var plugin in this.Where(p => (name == null || name == p.Name) && (type == null || p.IsTrueOf(type))).OrderByDescending(p => p.Priority))
             {
-                return null;
+                return plugin.GetValue(type);
             }
-            return plugin.GetValue(type);
+            return null;
         }
 
         /// <summary>
@@ -261,9 +262,9 @@ namespace blqw.IOC
                 return;
             }
 
-            if (_CataLog.Catalogs.Contains(catalog) == false)
+            if (_cataLog.Catalogs.Contains(catalog) == false)
             {
-                _CataLog.Catalogs.Add(catalog);
+                _cataLog.Catalogs.Add(catalog);
                 foreach (var p in catalog)
                 {
                     var part = p.CreatePart();
@@ -291,11 +292,11 @@ namespace blqw.IOC
         {
             get
             {
-                if (_Exceptions == null)
+                if (_exceptions == null)
                 {
                     return null;
                 }
-                return new AggregateException("部分插件加载出现错误", _Exceptions);
+                return new AggregateException("部分插件加载出现错误", _exceptions);
             }
         }
 
