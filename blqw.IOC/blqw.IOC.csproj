@@ -44,6 +44,9 @@
   <ItemGroup>
     <Compile Include="ComponentServices.cs" />
     <Compile Include="DefalutComponent.cs" />
+    <Compile Include="Logger\DefaultLogger.cs" />
+    <Compile Include="Logger\ILogger.cs" />
+    <Compile Include="Logger\LogService.cs" />
     <Compile Include="MEF.cs" />
     <Compile Include="PlugIn.cs">
       <SubType>Component</SubType>
@@ -58,9 +61,7 @@
     <None Include="nuget-pack.bat" />
     <None Include="Readme.md" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Interface\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
