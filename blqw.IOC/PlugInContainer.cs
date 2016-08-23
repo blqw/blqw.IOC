@@ -4,10 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.Composition.Hosting;
 using System.ComponentModel.Composition.Primitives;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace blqw.IOC
 {
@@ -42,18 +39,67 @@ namespace blqw.IOC
         }
 
         /// <summary>
+        /// 根据名称获取优先级最高的插件
+        /// </summary>
+        /// <param name="name"> 插件名称 </param>
+        /// <returns> </returns>
+        public PlugIn this[string name]
+        {
+            get { return (PlugIn) Components[name]; }
+        }
+
+        /// <summary>
+        /// 载入插件的异常
+        /// </summary>
+        public AggregateException Exceptions
+        {
+            get
+            {
+                if (_exceptions == null)
+                {
+                    return null;
+                }
+                return new AggregateException("部分插件加载出现错误", _exceptions);
+            }
+        }
+
+        /// <summary>
+        /// 枚举所有插件
+        /// </summary>
+        /// <returns> </returns>
+        public IEnumerator<PlugIn> GetEnumerator()
+        {
+            foreach (PlugIn plugin in Components)
+            {
+                yield return plugin;
+            }
+        }
+
+        /// <summary>
+        /// 枚举所有插件
+        /// </summary>
+        /// <returns> </returns>
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return Components.GetEnumerator();
+        }
+
+        /// <summary>
         /// 向容器中增加自定义插件
         /// </summary>
-        /// <param name="plugin">插件</param>
+        /// <param name="plugin"> 插件 </param>
         public void Add(PlugIn plugin)
         {
-            plugin.NotNull()?.Throw(nameof(plugin));
+            if (plugin == null)
+            {
+                throw new ArgumentNullException(nameof(plugin));
+            }
 
             if (Components.Cast<PlugIn>().Contains(plugin))
             {
                 return; //如果已经存在则忽略本次添加操作
             }
-            var existsed = (PlugIn)Components[plugin.Name];
+            var existsed = (PlugIn) Components[plugin.Name];
             if (existsed != null)
             {
                 if (existsed.Priority < plugin.Priority)
@@ -65,27 +111,14 @@ namespace blqw.IOC
         }
 
         /// <summary>
-        /// 根据名称获取优先级最高的插件
-        /// </summary>
-        /// <param name="name">插件名称</param>
-        /// <returns></returns>
-        public PlugIn this[string name]
-        {
-            get
-            {
-                return (PlugIn)Components[name];
-            }
-        }
-
-        /// <summary>
         /// 获取插件导出项
         /// </summary>
-        /// <param name="name">插件名称</param>
-        /// <param name="type">插件类型</param>
-        /// <returns></returns>
+        /// <param name="name"> 插件名称 </param>
+        /// <param name="type"> 插件类型 </param>
+        /// <returns> </returns>
         public IEnumerable<object> GetExports(string name, Type type)
         {
-            if (type == null || type == typeof(object))
+            if ((type == null) || (type == typeof(object)))
             {
                 if (name == null)
                 {
@@ -124,7 +157,7 @@ namespace blqw.IOC
             {
                 if (plugin.IsComposition == false)
                 {
-                    if (name == null || name == plugin.Name)
+                    if ((name == null) || (name == plugin.Name))
                     {
                         var value = plugin.GetValue(type);
                         if (value != null)
@@ -139,31 +172,39 @@ namespace blqw.IOC
         /// <summary>
         /// 获取插件导出项
         /// </summary>
-        /// <param name="name">插件名称</param>
-        /// <returns></returns>
+        /// <param name="name"> 插件名称 </param>
+        /// <returns> </returns>
+        /// <exception cref="ArgumentNullException"> <paramref name="name" /> is <see langword="null" />. </exception>
         public IEnumerable<object> GetExports(string name)
         {
-            name.NotNull()?.Throw(nameof(name));
+            if (name == null)
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
             return GetExports(name, null);
         }
 
         /// <summary>
         /// 获取插件导出项
         /// </summary>
-        /// <param name="type">插件类型</param>
-        /// <returns></returns>
+        /// <param name="type"> 插件类型 </param>
+        /// <returns> </returns>
+        /// <exception cref="ArgumentNullException"> <paramref name="type" /> is <see langword="null" />. </exception>
         public IEnumerable<object> GetExports(Type type)
         {
-            type.NotNull()?.Throw(nameof(type));
+            if (type == null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
             return GetExports(null, type);
         }
 
         /// <summary>
         /// 获取插件导出项
         /// </summary>
-        /// <typeparam name="T">插件类型</typeparam>
-        /// <param name="name">插件名称</param>
-        /// <returns></returns>
+        /// <typeparam name="T"> 插件类型 </typeparam>
+        /// <param name="name"> 插件名称 </param>
+        /// <returns> </returns>
         public IEnumerable<T> GetExports<T>(string name)
         {
             return GetExports(name, typeof(T)).Cast<T>();
@@ -172,8 +213,8 @@ namespace blqw.IOC
         /// <summary>
         /// 获取插件导出项
         /// </summary>
-        /// <typeparam name="T">插件类型</typeparam>
-        /// <returns></returns>
+        /// <typeparam name="T"> 插件类型 </typeparam>
+        /// <returns> </returns>
         public IEnumerable<T> GetExports<T>()
         {
             return GetExports(null, typeof(T)).Cast<T>();
@@ -182,21 +223,27 @@ namespace blqw.IOC
         /// <summary>
         /// 获取优先级最高的一个插件的导出项
         /// </summary>
-        /// <param name="name">插件名称</param>
-        /// <param name="type">插件类型</param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentException">当 <paramref name="name"/> 为 `null` 时, <paramref name="type"/> 不能为`null`或`<see cref="object"/>`.</exception>
+        /// <param name="name"> 插件名称 </param>
+        /// <param name="type"> 插件类型 </param>
+        /// <returns> </returns>
+        /// <exception cref="ArgumentException">
+        /// 当 <paramref name="name" /> 为 `null` 时, <paramref name="type" /> 不能为`null`或`
+        /// <see cref="object" />`.
+        /// </exception>
         public object GetExport(string name, Type type)
         {
             if (type == typeof(object))
             {
                 type = null;
             }
-            if (name == null && type == null)
+            if ((name == null) && (type == null))
             {
                 throw new ArgumentException($"当{nameof(name)}为null时,{nameof(type)}不能为`null`或`System.Object`");
             }
-            foreach (var plugin in this.Where(p => (name == null || name == p.Name) && (type == null || p.IsTrueOf(type))).OrderByDescending(p => p.Priority))
+            foreach (
+                var plugin in
+                this.Where(p => ((name == null) || (name == p.Name)) && ((type == null) || p.IsTrueOf(type)))
+                    .OrderByDescending(p => p.Priority))
             {
                 return plugin.GetValue(type);
             }
@@ -206,50 +253,58 @@ namespace blqw.IOC
         /// <summary>
         /// 获取优先级最高的一个插件的导出项
         /// </summary>
-        /// <param name="name">插件名称</param>
-        /// <returns></returns>
+        /// <param name="name"> 插件名称 </param>
+        /// <returns> </returns>
+        /// <exception cref="ArgumentNullException"> <paramref name="name" /> is <see langword="null" />. </exception>
         public object GetExport(string name)
         {
-            name.NotNull()?.Throw(nameof(name));
+            if (name == null)
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
             return GetExport(name, null);
         }
 
         /// <summary>
         /// 获取优先级最高的一个插件的导出项
         /// </summary>
-        /// <param name="type">插件类型</param>
-        /// <returns></returns>
+        /// <param name="type"> 插件类型 </param>
+        /// <returns> </returns>
+        /// <exception cref="ArgumentNullException"> <paramref name="name" /> is <see langword="null" />. </exception>
         public object GetExport(Type type)
         {
-            type.NotNull()?.Throw(nameof(type));
+            if (type == null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
             return GetExport(null, type);
         }
 
         /// <summary>
         /// 获取优先级最高的一个插件的导出项
         /// </summary>
-        /// <typeparam name="T">插件类型</typeparam>
-        /// <param name="name">插件名称</param>
-        /// <returns></returns>
+        /// <typeparam name="T"> 插件类型 </typeparam>
+        /// <param name="name"> 插件名称 </param>
+        /// <returns> </returns>
         public T GetExport<T>(string name)
         {
-            return (T)GetExport(name, typeof(T));
+            return (T) GetExport(name, typeof(T));
         }
 
         /// <summary>
         /// 获取优先级最高的一个插件的导出项
         /// </summary>
-        /// <typeparam name="T">插件类型</typeparam>
-        /// <returns></returns>
+        /// <typeparam name="T"> 插件类型 </typeparam>
+        /// <returns> </returns>
         public T GetExport<T>()
         {
-            return (T)GetExport(null, typeof(T));
+            return (T) GetExport(null, typeof(T));
         }
 
         /// <summary>
         /// 添加插件组件部件目录
         /// </summary>
-        /// <param name="catalog">对象的可组合部件目录</param>
+        /// <param name="catalog"> 对象的可组合部件目录 </param>
         public void AddCatalog(ComposablePartCatalog catalog)
         {
             var agg = catalog as AggregateCatalog;
@@ -272,7 +327,7 @@ namespace blqw.IOC
                     {
                         try
                         {
-                            var plugin = new PlugIn(part, definition) { IsComposition = true };
+                            var plugin = new PlugIn(part, definition) {IsComposition = true};
                             Add(plugin);
                         }
                         catch (Exception ex)
@@ -285,71 +340,51 @@ namespace blqw.IOC
         }
 
         /// <summary>
-        /// 载入插件的异常
+        /// 向容器中增加自定义插件
         /// </summary>
-        public AggregateException Exceptions
+        /// <param name="component"> 插件 </param>
+        /// <exception cref="InvalidCastException"> <paramref name="component" /> 不是 <seealso cref="PlugIn" /> 类型 </exception>
+        public override void Add(IComponent component)
         {
-            get
+            var plugin = component as PlugIn;
+            if (plugin != null)
             {
-                if (_exceptions == null)
-                {
-                    return null;
-                }
-                return new AggregateException("部分插件加载出现错误", _exceptions);
+                Add(plugin);
+            }
+            else
+            {
+                throw new InvalidCastException($"{nameof(component)}不是{typeof(PlugIn).FullName}类型");
             }
         }
 
         /// <summary>
         /// 向容器中增加自定义插件
         /// </summary>
-        /// <param name="component">插件</param>
-        public override void Add(IComponent component)
-        {
-            component.Is<PlugIn>()?.Throw(nameof(component));
-            Add((PlugIn)component);
-        }
-
-        /// <summary>
-        /// 向容器中增加自定义插件
-        /// </summary>
-        /// <param name="component">插件</param>
-        /// <param name="name">插件名称</param>
+        /// <param name="component"> 插件 </param>
+        /// <param name="name"> 插件名称 </param>
+        /// <exception cref="InvalidCastException"> <paramref name="component" /> 不是 <seealso cref="PlugIn" /> 类型 </exception>
         public override void Add(IComponent component, string name)
         {
-            component.Is<PlugIn>()?.Throw(nameof(component));
-            ((PlugIn)component).Name = name;
-            Add((PlugIn)component);
+            var plugin = component as PlugIn;
+            if (plugin != null)
+            {
+                plugin.Name = name;
+                Add(plugin);
+            }
+            else
+            {
+                throw new InvalidCastException($"{nameof(component)}不是{typeof(PlugIn).FullName}类型");
+            }
         }
 
         /// <summary>
         /// 确定组件对此容器是否唯一。
         /// </summary>
-        /// <param name="component"></param>
-        /// <param name="name"></param>
+        /// <param name="component"> </param>
+        /// <param name="name"> </param>
         protected override void ValidateName(IComponent component, string name)
         {
             base.ValidateName(component, null);
-        }
-
-        /// <summary>
-        /// 枚举所有插件
-        /// </summary>
-        /// <returns></returns>
-        public IEnumerator<PlugIn> GetEnumerator()
-        {
-            foreach (PlugIn plugin in this.Components)
-            {
-                yield return plugin;
-            }
-        }
-
-        /// <summary>
-        /// 枚举所有插件
-        /// </summary>
-        /// <returns></returns>
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return Components.GetEnumerator();
         }
     }
 }

@@ -21,10 +21,14 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="part"></param>
         /// <param name="definition"></param>
+        /// <exception cref="ArgumentNullException"><paramref name="part"/> is <see langword="null" />.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="definition"/> is <see langword="null" />.</exception>
+        /// <exception cref="ComposablePartException">获取由 <see cref="T:System.ComponentModel.Composition.Primitives.ExportDefinition" /> 描述的导出对象时出错。</exception>
         public PlugIn(ComposablePart part, ExportDefinition definition)
         {
-            part.NotNull()?.Throw(nameof(part));
-            definition.NotNull()?.Throw(nameof(definition));
+            if (part == null) throw new ArgumentNullException(nameof(part));
+            if (definition == null) throw new ArgumentNullException(nameof(definition));
+
             Name = definition.ContractName;
             Metadata = definition.Metadata;
             InnerValue = part.GetExportedValue(definition);
@@ -33,7 +37,7 @@ namespace blqw.IOC
             IsMethod = InnerValue is ExportedDelegate;
             if (IsMethod)
             {
-                InnerValue = typeof(ExportedDelegate).GetField("_method", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(InnerValue);
+                InnerValue = typeof(ExportedDelegate).GetField("_method", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(InnerValue);
             }
             else if (InnerValue != null)
             {
@@ -228,8 +232,8 @@ namespace blqw.IOC
         /// <param name="plugin2"></param>
         internal static void Swap(PlugIn plugin1, PlugIn plugin2)
         {
-            plugin1.NotNull()?.Throw(nameof(plugin1));
-            plugin2.NotNull()?.Throw(nameof(plugin2));
+            if (plugin1 == null) throw new ArgumentNullException(nameof(plugin1));
+            if (plugin2 == null) throw new ArgumentNullException(nameof(plugin2));
 
             foreach (var field in typeof(PlugIn).GetFields(BindingFlags.DeclaredOnly | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
             {
