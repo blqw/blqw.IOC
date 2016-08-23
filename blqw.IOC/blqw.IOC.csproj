@@ -44,7 +44,7 @@
   <ItemGroup>
     <Compile Include="ComponentServices.cs" />
     <Compile Include="DefalutComponent.cs" />
-    <Compile Include="Logger\GlobalLogger.cs" />
+    <Compile Include="Logger\GlobalLoggerFilter.cs" />
     <Compile Include="Logger\NameFilter.cs" />
     <Compile Include="Logger\TraceLogger.cs" />
     <Compile Include="Logger\ILogger.cs" />
