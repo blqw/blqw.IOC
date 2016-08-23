@@ -19,12 +19,12 @@ namespace blqw.IOC
     public static class MEF
     {
         /// <summary>
-        /// 用于描述 <seealso cref="IDictionary{TKey,TValue}.ContainsKey"/> 方法
+        /// 用于描述 <seealso cref="IDictionary{TKey,TValue}.ContainsKey" /> 方法
         /// </summary>
         private static readonly MethodInfo _ContainsKey = typeof(IDictionary<string, object>).GetMethod("ContainsKey");
 
         /// <summary>
-        /// 用于描述 <seealso cref="IDictionary{TKey,TValue}.this"/> get方法
+        /// 用于描述 <seealso cref="IDictionary{TKey,TValue}.this" /> get方法
         /// </summary>
         private static readonly MethodInfo _GetItem =
             typeof(IDictionary<string, object>).GetProperties()
@@ -35,10 +35,16 @@ namespace blqw.IOC
         /// <summary>
         /// 静态构造函数,初始化插件容器
         /// </summary>
-        /// <remarks>这里不使用直接属性赋值,是因为在某些情况下会出现未知的问题</remarks>
+        /// <remarks> 这里不使用直接属性赋值,是因为在某些情况下会出现未知的问题 </remarks>
         static MEF()
         {
+            LogService.Logger?.Warning("开始初始化MEF");
+            var sw = Stopwatch.StartNew();
             Container = GetContainer();
+            sw.Stop();
+            var time = sw.Elapsed.TotalMilliseconds;
+            LogService.Logger?.Debug(() => "===插件列表===" + Environment.NewLine + string.Join(Environment.NewLine, Container.Catalog.Parts) + Environment.NewLine + $"=== 共{Container.Catalog.Count()}个 ===");
+            LogService.Logger?.Warning(() => $"MEF初始化完成, 耗时 {time} ms");
         }
 
         /// <summary>
@@ -47,18 +53,22 @@ namespace blqw.IOC
         public static CompositionContainer Container { get; }
 
         /// <summary>
-        /// 尝试添加程序集到哈希表,添加成功返回true,如果程序集已经存在或<paramref name="loaded"/>为null,或<paramref name="assembly"/>为null,则返回 false,
+        /// 尝试添加程序集到哈希表,添加成功返回true,如果程序集已经存在或<paramref name="loaded" />为null,或<paramref name="assembly" />为null,则返回 false,
         /// </summary>
         /// <param name="loaded"> 哈希表 </param>
         /// <param name="assembly"> 添加到哈希表的程序集 </param>
         /// <returns> </returns>
         private static bool TryAdd(this ISet<string> loaded, Assembly assembly)
         {
-            if (loaded == null || assembly == null)
+            if ((loaded == null) || (assembly == null))
+            {
                 return false;
+            }
             var key = assembly.ManifestModule.ModuleVersionId + "," + assembly.ManifestModule.MDStreamVersion;
             if (loaded.Contains(key))
+            {
                 return false;
+            }
             loaded.Add(key);
             return true;
         }
@@ -72,7 +82,7 @@ namespace blqw.IOC
         {
             var dir = new DirectoryCatalog(".").FullPath;
             var files = new HashSet<string>(
-                    Directory.EnumerateFiles(dir, "*.dll", SearchOption.AllDirectories)
+                Directory.EnumerateFiles(dir, "*.dll", SearchOption.AllDirectories)
                     .Union(Directory.EnumerateFiles(dir, "*.exe", SearchOption.AllDirectories))
                 , StringComparer.OrdinalIgnoreCase);
             var catalogs = new AggregateCatalog();
@@ -93,9 +103,9 @@ namespace blqw.IOC
 
             foreach (var file in files)
             {
-                var bytes = File.ReadAllBytes(file);
                 try
                 {
+                    var bytes = File.ReadAllBytes(file);
                     var ass = domain.Load(bytes);
                     if (loaded.TryAdd(ass) && ass.CanLoad())
                     {
@@ -104,7 +114,7 @@ namespace blqw.IOC
                 }
                 catch (Exception ex)
                 {
-                    Trace.WriteLine(ex, "MEF部分插件加载失败1");
+                    LogService.Logger?.Error($"文件加载失败{file}", ex);
                 }
             }
             AppDomain.Unload(domain);
@@ -131,7 +141,11 @@ namespace blqw.IOC
         /// <returns> </returns>
         private static List<ComposablePartCatalog> LoadTypes(this Assembly assembly)
         {
-            if (assembly == null) return null;
+            if (assembly == null)
+            {
+                return null;
+            }
+            LogService.Logger?.Information($"开始装载程序集 -> {assembly.FullName}");
             Type[] types;
             try
             {
@@ -143,26 +157,32 @@ namespace blqw.IOC
             }
             catch (Exception ex)
             {
-                Trace.WriteLine(ex, "MEF部分插件加载失败2");
+                LogService.Logger?.Error("程序集装载失败", ex);
                 return null;
             }
             var list = new List<ComposablePartCatalog>();
             string typeName = null;
             foreach (var type in types)
+            {
                 try
                 {
-                    if (type == null || Regex.IsMatch(type.FullName, "[^a-zA-Z_`0-9.+]"))
+                    if ((type == null) || Regex.IsMatch(type.FullName, "[^a-zA-Z_`0-9.+]"))
+                    {
                         continue;
+                    }
                     typeName = type.FullName;
                     list.Add(new TypeCatalog(type));
-                    LogService.Logger?.Debug(1, $"类型加载完成: {typeName}");
+                    LogService.Logger?.Debug($"类型装载完成 -> {typeName}");
                 }
                 catch (Exception ex)
                 {
                     if (typeName != null)
-                        LogService.Logger?.Error(1, $"类型加载失败: {typeName}", ex);
+                    {
+                        LogService.Logger?.Error($"类型装载失败 -> {typeName}", ex);
+                    }
                 }
-            LogService.Logger?.Debug(1, $"程序集加载完成: {assembly.FullName}");
+            }
+            LogService.Logger?.Information($"程序集装载完成 -> {assembly.FullName}");
             return list;
         }
 
@@ -173,9 +193,6 @@ namespace blqw.IOC
         /// <param name="instance"> </param>
         public static void Import(object instance)
         {
-            if (instance == null)
-                return;
-
             var type = instance as Type;
             if (type != null)
             {
@@ -189,7 +206,7 @@ namespace blqw.IOC
             }
             catch (CompositionException ex)
             {
-                Trace.WriteLine(ex.ToString(), "MEF组合失败");
+                LogService.Logger.Error("组合插件失败", ex);
             }
             Import(instance.GetType(), instance);
         }
@@ -203,30 +220,48 @@ namespace blqw.IOC
         {
             var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
             if (instance == null)
+            {
                 flags |= BindingFlags.Static;
+            }
             else
+            {
                 flags |= BindingFlags.Instance;
+            }
 
             foreach (var f in type.GetFields(flags))
             {
                 if (f.IsLiteral)
+                {
                     continue;
+                }
                 var import = GetImportDefinition(f, f.FieldType);
                 if (import == null)
+                {
                     continue;
+                }
                 var value = GetExportedValue(import);
                 if (value != null)
+                {
                     f.SetValue(instance, value);
+                }
             }
             var args = new object[1];
             foreach (var p in type.GetProperties(flags))
             {
+                if (p.GetIndexParameters().Length > 0)
+                {
+                    continue;
+                }
                 var set = p.GetSetMethod(true);
                 if (set == null)
+                {
                     continue;
+                }
                 var import = GetImportDefinition(p, p.PropertyType);
                 if (import == null)
+                {
                     continue;
+                }
                 var value = GetExportedValue(import);
                 if (value != null)
                 {
@@ -257,7 +292,9 @@ namespace blqw.IOC
         private static ImportDefinitionImpl GetImportDefinition(ImportAttribute import, Type memberType)
         {
             if (import == null)
+            {
                 return null;
+            }
 
             var name = import.ContractName ?? AttributedModelServices.GetTypeIdentity(import.ContractType ?? memberType);
             return new ImportDefinitionImpl(
@@ -282,11 +319,15 @@ namespace blqw.IOC
         private static ImportDefinitionImpl GetImportDefinition(ImportManyAttribute import, Type memberType)
         {
             if (import == null)
+            {
                 return null;
+            }
 
             var t = import.ContractType ?? GetActualType(memberType);
             if (t == null)
+            {
                 return null;
+            }
             var name = import.ContractName ?? AttributedModelServices.GetTypeIdentity(t);
             return new ImportDefinitionImpl(
                 GetExpression(name, t),
@@ -309,24 +350,38 @@ namespace blqw.IOC
         private static Type GetActualType(Type resultType)
         {
             if (resultType == null)
+            {
                 return null;
+            }
             if (resultType.IsArray)
+            {
                 return resultType.GetElementType();
+            }
 
             Type actualType = null; //实际插件类型
             if (resultType.IsInterface)
+            {
                 actualType = GetInerfaceElementType(resultType);
+            }
             foreach (var @interface in resultType.GetInterfaces())
             {
                 var elementType = GetInerfaceElementType(@interface);
                 if (elementType == null)
+                {
                     continue;
+                }
                 if (actualType == elementType)
+                {
                     continue;
+                }
                 if ((actualType == typeof(object)) || (actualType == null))
+                {
                     actualType = elementType;
+                }
                 else if (elementType != typeof(object))
+                {
                     return null;
+                }
             }
             return actualType;
         }
@@ -338,7 +393,9 @@ namespace blqw.IOC
             {
                 var raw = interfaceType.GetGenericTypeDefinition();
                 if ((raw == typeof(ICollection<>)) || (raw == typeof(IEnumerable<>)))
+                {
                     elementType = interfaceType.GetGenericArguments()[0];
+                }
             }
             else if ((interfaceType == typeof(ICollection))
                      || (interfaceType == typeof(IEnumerable)))
@@ -383,10 +440,14 @@ namespace blqw.IOC
             }
 
             if (left == null)
+            {
                 return Expression.Lambda<Func<ExportDefinition, bool>>(right, p);
+            }
 
             if (right == null)
+            {
                 return Expression.Lambda<Func<ExportDefinition, bool>>(left, p);
+            }
 
             var c = Expression.AndAlso(left, right);
             return Expression.Lambda<Func<ExportDefinition, bool>>(c, p);
@@ -402,6 +463,7 @@ namespace blqw.IOC
             var exports = Container.GetExports(import);
 
             if (import.Cardinality == ImportCardinality.ZeroOrMore)
+            {
                 if (import.MemberType.IsArray || import.MemberType.IsInterface)
                 {
                     var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(import.ExportedType));
@@ -409,7 +471,9 @@ namespace blqw.IOC
                     {
                         var value = ConvertExportedValue(export.Value, import.ExportedType);
                         if (value != null)
+                        {
                             list.Add(value);
+                        }
                     }
 
                     if (import.MemberType.IsArray)
@@ -424,31 +488,43 @@ namespace blqw.IOC
                 {
                     dynamic list = Activator.CreateInstance(import.MemberType);
                     foreach (var export in exports)
-                        try
+                    {
+                        dynamic value = ConvertExportedValue(export.Value, import.ExportedType);
+                        if (value != null)
                         {
-                            dynamic value = ConvertExportedValue(export.Value, import.ExportedType);
-                            if (value != null)
-                                list.Add(value);
+                            list.Add(value);
                         }
-                        catch (Exception ex)
-                        {
-                            Trace.WriteLine(ex.ToString(), "MEF组合失败2");
-                        }
+                    }
                     return list;
                 }
+            }
 
             return ConvertExportedValue(exports.FirstOrDefault()?.Value, import.ExportedType);
         }
 
         private static object ConvertExportedValue(object value, Type exportedType)
         {
-            if (value == null)
-                return null;
-            if (exportedType.IsInstanceOfType(value))
-                return value;
-            var handler = value as ExportedDelegate;
-            if ((handler != null) && exportedType.IsSubclassOf(typeof(Delegate)))
-                return handler.CreateDelegate(exportedType);
+            try
+            {
+                if (value == null)
+                {
+                    return null;
+                }
+                if (exportedType.IsInstanceOfType(value))
+                {
+                    return value;
+                }
+                var handler = value as ExportedDelegate;
+                if ((handler != null) && exportedType.IsSubclassOf(typeof(Delegate)))
+                {
+                    return handler.CreateDelegate(exportedType);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Logger.Error("组合插件失败", ex);
+            }
+
             return null;
         }
 
@@ -501,14 +577,18 @@ namespace blqw.IOC
                 //Trace.WriteLine(definition.Constraint.ToString(), "1");
 
                 if (definition.Cardinality == ImportCardinality.ZeroOrMore)
+                {
                     return exports;
+                }
 
                 //返回优先级最高的一个或者没有
                 return exports.OrderByDescending(it =>
                 {
                     object priority;
                     if (it.Metadata.TryGetValue("Priority", out priority))
+                    {
                         return priority;
+                    }
                     return 0;
                 }).Take(1).ToArray();
             }

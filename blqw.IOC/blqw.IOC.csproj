@@ -44,10 +44,13 @@
   <ItemGroup>
     <Compile Include="ComponentServices.cs" />
     <Compile Include="DefalutComponent.cs" />
-    <Compile Include="Logger\DefaultLogger.cs" />
+    <Compile Include="Logger\GlobalLogger.cs" />
+    <Compile Include="Logger\NameFilter.cs" />
+    <Compile Include="Logger\TraceLogger.cs" />
     <Compile Include="Logger\ILogger.cs" />
     <Compile Include="Logger\LogService.cs" />
     <Compile Include="MEF.cs" />
+    <Compile Include="PlatformService.cs" />
     <Compile Include="PlugIn.cs">
       <SubType>Component</SubType>
     </Compile>

@@ -272,13 +272,12 @@ namespace blqw.IOC
                     {
                         try
                         {
-                            var plugin = new PlugIn(part, definition);
-                            plugin.IsComposition = true;
+                            var plugin = new PlugIn(part, definition) { IsComposition = true };
                             Add(plugin);
                         }
                         catch (Exception ex)
                         {
-                            Trace.WriteLine(ex.ToString(), "插件载入失败");
+                            LogService.Logger?.Error("插件载入失败", ex);
                         }
                     }
                 }

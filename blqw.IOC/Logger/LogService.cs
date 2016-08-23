@@ -14,6 +14,6 @@ namespace blqw.IOC
         /// <summary>
         /// 全局日志记录器
         /// </summary>
-        public static ILogger Logger { get; set; } = new DefaultLogger();
+        public static ILogger Logger { get; set; } = new TraceLogger("blqw.IOC");
     }
 }
