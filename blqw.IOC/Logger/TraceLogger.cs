@@ -13,12 +13,7 @@ namespace blqw.IOC
     /// </summary>
     public class TraceLogger : TraceSource, ILogger
     {
-        private readonly NameFilter _filter;
-        private readonly SourceLevels _level;
-
-        private static readonly Hashtable _LevelMap = InitLevelMap();
-
-        private static Hashtable InitLevelMap()
+        private static readonly Hashtable _LevelMap = ((Func<Hashtable>) (() =>
         {
             var map = new Hashtable(StringComparer.OrdinalIgnoreCase);
             foreach (SourceLevels value in Enum.GetValues(typeof(SourceLevels)))
@@ -33,7 +28,10 @@ namespace blqw.IOC
             map["block"] = SourceLevels.Critical;
             map["test"] = SourceLevels.Verbose;
             return map;
-        }
+        }))();
+
+        private readonly NameFilter _filter;
+        private readonly SourceLevels _level;
 
         /// <summary>
         /// 使用指定的源名称初始化 <see cref="T:System.Diagnostics.TraceSource" /> 类的新实例。
@@ -47,7 +45,7 @@ namespace blqw.IOC
             : base(name, defaultLevel)
         {
             _filter = new NameFilter(Attributes["SourceFilter"], Attributes["SourceFilterRegex"]);
-            _level = (SourceLevels?)_LevelMap[Attributes["Level"] + ""] ?? Switch?.Level ?? SourceLevels.All;
+            _level = (SourceLevels?) _LevelMap[Attributes["Level"] + ""] ?? Switch?.Level ?? SourceLevels.All;
 
             //如果只有一个监听器 且是默认的监听器,则同步 Trace.Listeners
             if ((Listeners.Count == 1) && Listeners[0] is DefaultTraceListener)
@@ -61,21 +59,22 @@ namespace blqw.IOC
             }
 
             //Web和Console 附加 DefaultTraceListener
-            //winform 附加 ConsoleTraceListener
+            //winform 如果存在 ConsoleTraceListener 不附加 DefaultTraceListener
             //可以在"输出"窗口看到所有的日志
-            if (PlatformService.IsWeb || PlatformService.IsConsole)
+            if (PlatformServices.IsWeb || PlatformServices.IsConsole)
             {
                 if (Listeners.OfType<DefaultTraceListener>().Any() == false)
                 {
                     Listeners.Add(new DefaultTraceListener());
                 }
             }
-            else if (Listeners.OfType<ConsoleTraceListener>().Any() == false)
+            else if (Listeners.OfType<ConsoleTraceListener>().Any() == false
+                && Listeners.OfType<DefaultTraceListener>().Any() == false)
             {
-                Listeners.Add(new ConsoleTraceListener());
+                Listeners.Add(new DefaultTraceListener());
             }
         }
-        
+
 
         /// <summary>
         /// 调试日志
@@ -130,7 +129,7 @@ namespace blqw.IOC
                 && _level.HasFlag(SourceLevels.Error)
                 && (_filter.IsMatch(source) == false))
             {
-                TraceData(TraceEventType.Error, line, new { source, member, message, ex.Source });
+                TraceData(TraceEventType.Error, line, new {source, member, message, ex.Source});
                 TraceData(TraceEventType.Error, line, ex);
             }
         }
@@ -138,8 +137,8 @@ namespace blqw.IOC
         /// <summary>
         /// 调试日志
         /// </summary>
-        /// <param name="getMessage"></param>
-        /// <param name="line">行号 </param>
+        /// <param name="getMessage"> </param>
+        /// <param name="line"> 行号 </param>
         /// <param name="member"> 调用方法或属性 </param>
         /// <param name="file"> 文件名 </param>
         public void Debug(Func<string> getMessage, int line = 0, string member = "", string file = "")
@@ -148,8 +147,8 @@ namespace blqw.IOC
         /// <summary>
         /// 提示日志
         /// </summary>
-        /// <param name="getMessage"></param>
-        /// <param name="line">行号 </param>
+        /// <param name="getMessage"> </param>
+        /// <param name="line"> 行号 </param>
         /// <param name="member"> 调用方法或属性 </param>
         /// <param name="file"> 文件名 </param>
         public void Information(Func<string> getMessage, int line = 0, string member = "", string file = "")
@@ -158,8 +157,8 @@ namespace blqw.IOC
         /// <summary>
         /// 警告日志
         /// </summary>
-        /// <param name="getMessage"></param>
-        /// <param name="line">行号 </param>
+        /// <param name="getMessage"> </param>
+        /// <param name="line"> 行号 </param>
         /// <param name="member"> 调用方法或属性 </param>
         /// <param name="file"> 文件名 </param>
         public void Warning(Func<string> getMessage, int line = 0, string member = "", string file = "")
@@ -168,9 +167,9 @@ namespace blqw.IOC
         /// <summary>
         /// 异常日志
         /// </summary>
-        /// <param name="getMessage"></param>
+        /// <param name="getMessage"> </param>
         /// <param name="ex"> </param>
-        /// <param name="line">行号 </param>
+        /// <param name="line"> 行号 </param>
         /// <param name="member"> 调用方法或属性 </param>
         /// <param name="file"> 文件名 </param>
         public void Error(Func<string> getMessage, Exception ex, int line = 0, string member = "", string file = "")
@@ -180,10 +179,11 @@ namespace blqw.IOC
                 && _level.HasFlag(SourceLevels.Error)
                 && (_filter.IsMatch(source) == false))
             {
-                TraceData(TraceEventType.Error, line, new { source, member, message = getMessage(), ex.Source });
+                TraceData(TraceEventType.Error, line, new {source, member, message = getMessage(), ex.Source});
                 TraceData(TraceEventType.Error, line, ex);
             }
         }
+
 
         /// <summary>
         /// 同步 <seealso cref="Trace.Listeners" /> 和 <seealso cref="TraceLogger.Listeners" /> 中的对象
@@ -216,7 +216,7 @@ namespace blqw.IOC
 
         /// <summary> 获取跟踪源所支持的自定义特性。 </summary>
         /// <returns> 对跟踪源支持的自定义特性进行命名的字符串数组；如果不存在自定义特性，则为 null。 </returns>
-        protected override string[] GetSupportedAttributes() => new[] { "SourceFilter", "SourceFilterRegex", "Level" };
+        protected override string[] GetSupportedAttributes() => new[] {"SourceFilter", "SourceFilterRegex", "Level"};
 
         /// <summary>
         /// 调试日志
@@ -229,7 +229,8 @@ namespace blqw.IOC
         /// <param name="file"> 文件名 </param>
         /// <exception cref="RegexMatchTimeoutException"> 过滤器正则表达式匹配发生超时。 </exception>
         /// <exception cref="ObjectDisposedException"> 终止期间尝试跟踪事件。 </exception>
-        public void TraceWrite(TraceEventType eventType, SourceLevels level, string message, int line, string member, string file)
+        public void TraceWrite(TraceEventType eventType, SourceLevels level, string message, int line, string member,
+            string file)
         {
             var source = Path.GetFileNameWithoutExtension(file);
             if (GlobalLoggerFilter.ShouldTrace(source, Name, level)
@@ -252,7 +253,8 @@ namespace blqw.IOC
         /// <param name="file"> 文件名 </param>
         /// <exception cref="RegexMatchTimeoutException"> 过滤器正则表达式匹配发生超时。 </exception>
         /// <exception cref="ObjectDisposedException"> 终止期间尝试跟踪事件。 </exception>
-        public void TraceWrite(TraceEventType eventType, SourceLevels level, Func<string> getMessage, int line, string member, string file)
+        public void TraceWrite(TraceEventType eventType, SourceLevels level, Func<string> getMessage, int line,
+            string member, string file)
         {
             var source = Path.GetFileNameWithoutExtension(file);
             if (GlobalLoggerFilter.ShouldTrace(source, Name, level)

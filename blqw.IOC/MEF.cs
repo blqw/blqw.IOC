@@ -19,16 +19,16 @@ namespace blqw.IOC
     public static class MEF
     {
         /// <summary>
-        /// 用于描述 <seealso cref="IDictionary{TKey,TValue}.ContainsKey" /> 方法
+        /// 用于描述 <seealso cref="IDictionary{TKey,TValue}.ContainsKey" /> 方法，用于生成筛选插件的lambda表达式
         /// </summary>
         private static readonly MethodInfo _ContainsKey = typeof(IDictionary<string, object>).GetMethod("ContainsKey");
 
         /// <summary>
-        /// 用于描述 <seealso cref="IDictionary{TKey,TValue}.this" /> get方法
+        /// 用于描述 <seealso cref="IDictionary{TKey,TValue}.this" /> get方法，用于生成筛选插件的lambda表达式
         /// </summary>
         private static readonly MethodInfo _GetItem =
             typeof(IDictionary<string, object>).GetProperties()
-                .Where(it => it.GetIndexParameters()?.Length > 0)
+                .Where(it => it.GetIndexParameters().Length > 0)
                 .Select(it => it.GetGetMethod())
                 .First();
 
@@ -38,13 +38,13 @@ namespace blqw.IOC
         /// <remarks> 这里不使用直接属性赋值,是因为在某些情况下会出现未知的问题 </remarks>
         static MEF()
         {
-            LogService.Logger?.Warning("开始初始化MEF");
+            LogServices.Logger?.Warning("开始初始化MEF");
             var sw = Stopwatch.StartNew();
             Container = GetContainer();
             sw.Stop();
             var time = sw.Elapsed.TotalMilliseconds;
-            LogService.Logger?.Debug(() => "===插件列表===" + Environment.NewLine + string.Join(Environment.NewLine, Container.Catalog.Parts) + Environment.NewLine + $"=== 共{Container.Catalog.Count()}个 ===");
-            LogService.Logger?.Warning(() => $"MEF初始化完成, 耗时 {time} ms");
+            LogServices.Logger?.Debug(() => "===插件列表===" + Environment.NewLine + string.Join(Environment.NewLine, Container.Catalog.Parts) + Environment.NewLine + $"=== 共{Container.Catalog.Count()}个 ===");
+            LogServices.Logger?.Warning(() => $"MEF初始化完成, 耗时 {time} ms");
         }
 
         /// <summary>
@@ -114,7 +114,7 @@ namespace blqw.IOC
                 }
                 catch (Exception ex)
                 {
-                    LogService.Logger?.Error($"文件加载失败{file}", ex);
+                    LogServices.Logger?.Error($"文件加载失败{file}", ex);
                 }
             }
             AppDomain.Unload(domain);
@@ -145,7 +145,7 @@ namespace blqw.IOC
             {
                 return null;
             }
-            LogService.Logger?.Information($"开始装载程序集 -> {assembly.FullName}");
+            LogServices.Logger?.Information($"开始装载程序集 -> {assembly.FullName}");
             Type[] types;
             try
             {
@@ -157,7 +157,7 @@ namespace blqw.IOC
             }
             catch (Exception ex)
             {
-                LogService.Logger?.Error("程序集装载失败", ex);
+                LogServices.Logger?.Error("程序集装载失败", ex);
                 return null;
             }
             var list = new List<ComposablePartCatalog>();
@@ -172,17 +172,17 @@ namespace blqw.IOC
                     }
                     typeName = type.FullName;
                     list.Add(new TypeCatalog(type));
-                    LogService.Logger?.Debug($"类型装载完成 -> {typeName}");
+                    LogServices.Logger?.Debug($"类型装载完成 -> {typeName}");
                 }
                 catch (Exception ex)
                 {
                     if (typeName != null)
                     {
-                        LogService.Logger?.Error($"类型装载失败 -> {typeName}", ex);
+                        LogServices.Logger?.Error($"类型装载失败 -> {typeName}", ex);
                     }
                 }
             }
-            LogService.Logger?.Information($"程序集装载完成 -> {assembly.FullName}");
+            LogServices.Logger?.Information($"程序集装载完成 -> {assembly.FullName}");
             return list;
         }
 
@@ -206,7 +206,7 @@ namespace blqw.IOC
             }
             catch (CompositionException ex)
             {
-                LogService.Logger.Error("组合插件失败", ex);
+                LogServices.Logger.Error("组合插件失败", ex);
             }
             Import(instance.GetType(), instance);
         }
@@ -522,7 +522,7 @@ namespace blqw.IOC
             }
             catch (Exception ex)
             {
-                LogService.Logger.Error("组合插件失败", ex);
+                LogServices.Logger.Error("组合插件失败", ex);
             }
 
             return null;

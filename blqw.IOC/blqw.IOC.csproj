@@ -48,9 +48,9 @@
     <Compile Include="Logger\NameFilter.cs" />
     <Compile Include="Logger\TraceLogger.cs" />
     <Compile Include="Logger\ILogger.cs" />
-    <Compile Include="Logger\LogService.cs" />
+    <Compile Include="Logger\LogServices.cs" />
     <Compile Include="MEF.cs" />
-    <Compile Include="PlatformService.cs" />
+    <Compile Include="PlatformServices.cs" />
     <Compile Include="PlugIn.cs">
       <SubType>Component</SubType>
     </Compile>

@@ -230,6 +230,8 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="plugin1"></param>
         /// <param name="plugin2"></param>
+        /// <exception cref="ArgumentNullException"><paramref name="plugin1"/> is <see langword="null" />.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="plugin2"/> is <see langword="null" />.</exception>
         internal static void Swap(PlugIn plugin1, PlugIn plugin2)
         {
             if (plugin1 == null) throw new ArgumentNullException(nameof(plugin1));

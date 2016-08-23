@@ -23,8 +23,14 @@ namespace blqw.IOC
         /// </summary>
         private readonly CompositionContainer _container;
 
+        /// <summary>
+        /// 异常集合
+        /// </summary>
         private readonly List<Exception> _exceptions;
 
+        /// <summary>
+        /// 初始化插件容器
+        /// </summary>
         public PlugInContainer()
         {
             _cataLog = new AggregateCatalog();
@@ -32,6 +38,10 @@ namespace blqw.IOC
             _exceptions = new List<Exception>();
         }
 
+        /// <summary>
+        /// 初始化插件容器
+        /// </summary>
+        /// <param name="catalog"> 插件目录 </param>
         public PlugInContainer(ComposablePartCatalog catalog)
             : this()
         {
@@ -43,51 +53,31 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="name"> 插件名称 </param>
         /// <returns> </returns>
-        public PlugIn this[string name]
-        {
-            get { return (PlugIn) Components[name]; }
-        }
+        public PlugIn this[string name] => (PlugIn) Components[name];
 
         /// <summary>
         /// 载入插件的异常
         /// </summary>
         public AggregateException Exceptions
-        {
-            get
-            {
-                if (_exceptions == null)
-                {
-                    return null;
-                }
-                return new AggregateException("部分插件加载出现错误", _exceptions);
-            }
-        }
+            => _exceptions == null ? null : new AggregateException("部分插件加载出现错误", _exceptions);
 
         /// <summary>
         /// 枚举所有插件
         /// </summary>
         /// <returns> </returns>
-        public IEnumerator<PlugIn> GetEnumerator()
-        {
-            foreach (PlugIn plugin in Components)
-            {
-                yield return plugin;
-            }
-        }
+        public IEnumerator<PlugIn> GetEnumerator() => Components.Cast<PlugIn>().GetEnumerator();
 
         /// <summary>
         /// 枚举所有插件
         /// </summary>
         /// <returns> </returns>
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return Components.GetEnumerator();
-        }
+        IEnumerator IEnumerable.GetEnumerator() => Components.GetEnumerator();
 
         /// <summary>
         /// 向容器中增加自定义插件
         /// </summary>
         /// <param name="plugin"> 插件 </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="plugin" /> is <see langword="null" />. </exception>
         public void Add(PlugIn plugin)
         {
             if (plugin == null)
@@ -100,14 +90,14 @@ namespace blqw.IOC
                 return; //如果已经存在则忽略本次添加操作
             }
             var existsed = (PlugIn) Components[plugin.Name];
-            if (existsed != null)
+            if (existsed == null)
             {
-                if (existsed.Priority < plugin.Priority)
-                {
-                    PlugIn.Swap(existsed, plugin);
-                }
+                base.Add(plugin, plugin.Name);
             }
-            base.Add(plugin, plugin.Name);
+            else if (existsed.Priority < plugin.Priority)
+            {
+                PlugIn.Swap(existsed, plugin);
+            }
         }
 
         /// <summary>
@@ -116,14 +106,18 @@ namespace blqw.IOC
         /// <param name="name"> 插件名称 </param>
         /// <param name="type"> 插件类型 </param>
         /// <returns> </returns>
+        /// <exception cref="ArgumentException">
+        /// 当 <paramref name="name" /> 为null时,<paramref name="type" /> 不能是
+        /// <seealso cref="object" />
+        /// </exception>
         public IEnumerable<object> GetExports(string name, Type type)
         {
+            if ((name == null) && (type == typeof(object)))
+            {
+                throw new ArgumentException($"当{nameof(name)}为null时,{nameof(type)}不能是 System.Object");
+            }
             if ((type == null) || (type == typeof(object)))
             {
-                if (name == null)
-                {
-                    throw new ArgumentException($"当{nameof(name)}为null时,{nameof(type)}不能为System.Object");
-                }
                 foreach (PlugIn plugin in Components)
                 {
                     if (name == plugin.Name)
@@ -332,7 +326,7 @@ namespace blqw.IOC
                         }
                         catch (Exception ex)
                         {
-                            LogService.Logger?.Error("插件载入失败", ex);
+                            LogServices.Logger?.Error("插件载入失败", ex);
                         }
                     }
                 }

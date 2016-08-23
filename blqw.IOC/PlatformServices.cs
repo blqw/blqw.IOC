@@ -1,22 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace blqw.IOC
 {
     /// <summary>
     /// 当前运行平台检查
     /// </summary>
-    public static class PlatformService
+    public static class PlatformServices
     {
-        static PlatformService()
+        static PlatformServices()
         {
             //判断当前程序的配置文件,如果是web.config,则认为是web应用程序
-            //否则认为应用程序,附加ConsoleTraceListener
-            //这样就可以在输出窗口看到所有的日志
             if ("web.config" == Path.GetFileName(AppDomain.CurrentDomain.SetupInformation.ConfigurationFile)?.ToLowerInvariant())
             {
                 IsWeb = true;
@@ -29,22 +23,24 @@ namespace blqw.IOC
                     Console.Title.GetHashCode();
                     IsConsole = true;
                 }
-                catch(IOException)
+                catch (IOException)
                 {
-                    //Console.Title 抛出异常,是 WinForm应用程序
+                    //Console.Title 抛出异常,是 WinForm应用程序或WPF
                     IsWinForm = true;
                 }
             }
-
         }
+
         /// <summary>
         /// 当前环境是Web应用程序
         /// </summary>
         public static bool IsWeb { get; }
+
         /// <summary>
         /// 当前运行环境是Console应用程序
         /// </summary>
         public static bool IsConsole { get; }
+
         /// <summary>
         /// 当前运行环境是winform应用程序
         /// </summary>
