@@ -22,7 +22,7 @@ namespace blqw.IOC
         /// <param name="regex"> 需要过滤名称的正则表达式 </param>
         public NameFilter(string names, string regex)
         {
-            if (string.IsNullOrWhiteSpace(names) == false && names != "*")
+            if (string.IsNullOrWhiteSpace(names) == false)
             {
                 _names = new HashSet<string>(names.Split(','), StringComparer.OrdinalIgnoreCase);
             }
