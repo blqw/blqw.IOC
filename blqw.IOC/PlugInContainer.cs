@@ -53,7 +53,7 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="name"> 插件名称 </param>
         /// <returns> </returns>
-        public PlugIn this[string name] => (PlugIn) Components[name];
+        public PlugIn this[string name] => (PlugIn)Components[name];
 
         /// <summary>
         /// 载入插件的异常
@@ -89,15 +89,12 @@ namespace blqw.IOC
             {
                 return; //如果已经存在则忽略本次添加操作
             }
-            var existsed = (PlugIn) Components[plugin.Name];
-            if (existsed == null)
-            {
-                base.Add(plugin, plugin.Name);
-            }
-            else if (existsed.Priority < plugin.Priority)
+            var existsed = (PlugIn)Components[plugin.Name];
+            if (existsed?.Priority < plugin.Priority)
             {
                 PlugIn.Swap(existsed, plugin);
             }
+            base.Add(plugin, plugin.Name);
         }
 
         /// <summary>
@@ -112,11 +109,15 @@ namespace blqw.IOC
         /// </exception>
         public IEnumerable<object> GetExports(string name, Type type)
         {
+            if ((type == null))
+            {
+                type = typeof(object);
+            }
             if ((name == null) && (type == typeof(object)))
             {
                 throw new ArgumentException($"当{nameof(name)}为null时,{nameof(type)}不能是 System.Object");
             }
-            if ((type == null) || (type == typeof(object)))
+            if (type == typeof(object))
             {
                 foreach (PlugIn plugin in Components)
                 {
@@ -131,25 +132,25 @@ namespace blqw.IOC
                 }
                 yield break;
             }
-            foreach (var export in _container.GetExports(type, null, name))
-            {
-                var handler = export.Value as ExportedDelegate;
-                if (handler != null)
-                {
-                    var func = handler.CreateDelegate(type);
-                    if (func != null)
-                    {
-                        yield return func;
-                    }
-                }
-                else
-                {
-                    yield return export.Value;
-                }
-            }
+            //foreach (var export in _container.GetExports(type, null, name))
+            //{
+            //    var handler = export.Value as ExportedDelegate;
+            //    if (handler != null)
+            //    {
+            //        var func = handler.CreateDelegate(type);
+            //        if (func != null)
+            //        {
+            //            yield return func;
+            //        }
+            //    }
+            //    else
+            //    {
+            //        yield return export.Value;
+            //    }
+            //}
             foreach (PlugIn plugin in Components)
             {
-                if (plugin.IsComposition == false)
+                if (plugin.IsCustom == false)
                 {
                     if ((name == null) || (name == plugin.Name))
                     {
@@ -199,20 +200,14 @@ namespace blqw.IOC
         /// <typeparam name="T"> 插件类型 </typeparam>
         /// <param name="name"> 插件名称 </param>
         /// <returns> </returns>
-        public IEnumerable<T> GetExports<T>(string name)
-        {
-            return GetExports(name, typeof(T)).Cast<T>();
-        }
+        public IEnumerable<T> GetExports<T>(string name) => GetExports(name, typeof(T)).Cast<T>();
 
         /// <summary>
         /// 获取插件导出项
         /// </summary>
         /// <typeparam name="T"> 插件类型 </typeparam>
         /// <returns> </returns>
-        public IEnumerable<T> GetExports<T>()
-        {
-            return GetExports(null, typeof(T)).Cast<T>();
-        }
+        public IEnumerable<T> GetExports<T>() => GetExports(null, typeof(T)).Cast<T>();
 
         /// <summary>
         /// 获取优先级最高的一个插件的导出项
@@ -234,14 +229,10 @@ namespace blqw.IOC
             {
                 throw new ArgumentException($"当{nameof(name)}为null时,{nameof(type)}不能为`null`或`System.Object`");
             }
-            foreach (
-                var plugin in
-                this.Where(p => ((name == null) || (name == p.Name)) && ((type == null) || p.IsTrueOf(type)))
-                    .OrderByDescending(p => p.Priority))
-            {
-                return plugin.GetValue(type);
-            }
-            return null;
+            return this.Where(p => ((name == null) || (name == p.Name)) && ((type == null) || p.IsTrueOf(type)))
+                        .OrderByDescending(p => p.Priority)
+                        .Select(plugin => plugin.GetValue(type))
+                        .FirstOrDefault();
         }
 
         /// <summary>
@@ -264,7 +255,7 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="type"> 插件类型 </param>
         /// <returns> </returns>
-        /// <exception cref="ArgumentNullException"> <paramref name="name" /> is <see langword="null" />. </exception>
+        /// <exception cref="ArgumentNullException"> <paramref name="type" /> is <see langword="null" />. </exception>
         public object GetExport(Type type)
         {
             if (type == null)
@@ -280,20 +271,14 @@ namespace blqw.IOC
         /// <typeparam name="T"> 插件类型 </typeparam>
         /// <param name="name"> 插件名称 </param>
         /// <returns> </returns>
-        public T GetExport<T>(string name)
-        {
-            return (T) GetExport(name, typeof(T));
-        }
+        public T GetExport<T>(string name) => (T)GetExport(name, typeof(T));
 
         /// <summary>
         /// 获取优先级最高的一个插件的导出项
         /// </summary>
         /// <typeparam name="T"> 插件类型 </typeparam>
         /// <returns> </returns>
-        public T GetExport<T>()
-        {
-            return (T) GetExport(null, typeof(T));
-        }
+        public T GetExport<T>() => (T)GetExport(null, typeof(T));
 
         /// <summary>
         /// 添加插件组件部件目录
@@ -301,6 +286,10 @@ namespace blqw.IOC
         /// <param name="catalog"> 对象的可组合部件目录 </param>
         public void AddCatalog(ComposablePartCatalog catalog)
         {
+            if (catalog.Any() == false)
+            {
+                return;
+            }
             var agg = catalog as AggregateCatalog;
             if (agg != null)
             {
@@ -311,23 +300,24 @@ namespace blqw.IOC
                 return;
             }
 
-            if (_cataLog.Catalogs.Contains(catalog) == false)
+            if (_cataLog.Catalogs.Contains(catalog))
             {
-                _cataLog.Catalogs.Add(catalog);
-                foreach (var p in catalog)
+                return;
+            }
+            _cataLog.Catalogs.Add(catalog);
+            foreach (var p in catalog)
+            {
+                var part = p.CreatePart();
+                foreach (var definition in part.ExportDefinitions)
                 {
-                    var part = p.CreatePart();
-                    foreach (var definition in part.ExportDefinitions)
+                    try
                     {
-                        try
-                        {
-                            var plugin = new PlugIn(part, definition) {IsComposition = true};
-                            Add(plugin);
-                        }
-                        catch (Exception ex)
-                        {
-                            LogServices.Logger?.Error("插件载入失败", ex);
-                        }
+                        var plugin = new PlugIn(part, definition) { IsCustom = true };
+                        Add(plugin);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogServices.Logger?.Error("插件载入失败", ex);
                     }
                 }
             }

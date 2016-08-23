@@ -469,7 +469,7 @@ namespace blqw.IOC
                     var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(import.ExportedType));
                     foreach (var export in exports)
                     {
-                        var value = ConvertExportedValue(export.Value, import.ExportedType);
+                        var value = ConvertExportedValue(() => export.Value, import.ExportedType);
                         if (value != null)
                         {
                             list.Add(value);
@@ -489,7 +489,7 @@ namespace blqw.IOC
                     dynamic list = Activator.CreateInstance(import.MemberType);
                     foreach (var export in exports)
                     {
-                        dynamic value = ConvertExportedValue(export.Value, import.ExportedType);
+                        dynamic value = ConvertExportedValue(() => export.Value, import.ExportedType);
                         if (value != null)
                         {
                             list.Add(value);
@@ -499,13 +499,14 @@ namespace blqw.IOC
                 }
             }
 
-            return ConvertExportedValue(exports.FirstOrDefault()?.Value, import.ExportedType);
+            return ConvertExportedValue(() => exports.FirstOrDefault()?.Value, import.ExportedType);
         }
 
-        private static object ConvertExportedValue(object value, Type exportedType)
+        private static object ConvertExportedValue(Func<object> getValue, Type exportedType)
         {
             try
             {
+                var value = getValue();
                 if (value == null)
                 {
                     return null;
@@ -601,10 +602,7 @@ namespace blqw.IOC
         /// <summary>
         /// 插件容器
         /// </summary>
-        public static PlugInContainer PlugIns
-        {
-            get { return _PlugIns ?? (_PlugIns = Container == null ? null : new PlugInContainer(Container.Catalog)); }
-        }
+        public static PlugInContainer PlugIns => _PlugIns ?? (_PlugIns = (Container == null ? null : new PlugInContainer(Container.Catalog)));
 
         #endregion
     }

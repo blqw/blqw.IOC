@@ -61,37 +61,37 @@ namespace blqw.IOC
         /// <summary>
         /// 插件类型
         /// </summary>
-        public Type Type { get; private set; }
+        public Type Type { get; }
 
         /// <summary>
         /// 插件类型名称
         /// </summary>
-        public string TypeIdentity { get; private set; }
+        public string TypeIdentity { get; }
 
         /// <summary>
-        /// 系统部件
+        /// 自定义插件(由用户手动实例化)
         /// </summary>
-        public bool IsComposition { get; internal set; }
+        public bool IsCustom { get; internal set; }
 
         /// <summary>
         /// 是否是一个方法
         /// </summary>
-        public bool IsMethod { get; private set; }
+        public bool IsMethod { get; }
 
         /// <summary>
         /// 插件的值
         /// </summary>
-        private object InnerValue { get; set; }
+        private object InnerValue { get; }
 
         /// <summary>
         /// 优先级
         /// </summary>
-        public int Priority { get; private set; }
+        public int Priority { get; }
 
         /// <summary>
         /// 协定元数据
         /// </summary>
-        public IDictionary<string, object> Metadata { get; private set; }
+        public IDictionary<string, object> Metadata { get; }
 
         /// <summary>
         /// 获取插件元数据的值,如果元数据不存在或者类型不正确,则返回 defaultValue值
@@ -142,12 +142,7 @@ namespace blqw.IOC
                 return true;
             }
 
-            if (Type?.IsSubclassOf(type) == true)
-            {
-                return true;
-            }
-
-            return false;
+            return Type?.IsSubclassOf(type) == true;
         }
 
         /// <summary>
@@ -175,12 +170,7 @@ namespace blqw.IOC
                 return InnerValue;
             }
 
-            if (Type.IsSubclassOf(type))
-            {
-                return InnerValue;
-            }
-
-            return null;
+            return Type.IsSubclassOf(type) ? InnerValue : null;
         }
 
         /// <summary>
@@ -188,10 +178,7 @@ namespace blqw.IOC
         /// </summary>
         /// <typeparam name="T">用于描述插件类型的泛型参数</typeparam>
         /// <returns></returns>
-        public T GetValue<T>()
-        {
-            return (T)GetValue(typeof(T));
-        }
+        public T GetValue<T>() => (T)GetValue(typeof(T));
 
         /// <summary>
         /// 比较方法签名
@@ -256,13 +243,6 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="other"></param>
         /// <returns></returns>
-        public int CompareTo(PlugIn other)
-        {
-            if (other == null)
-            {
-                return 1;
-            }
-            return this.Priority.CompareTo(other.Priority);
-        }
+        public int CompareTo(PlugIn other) => other == null ? 1 : this.Priority.CompareTo(other.Priority);
     }
 }

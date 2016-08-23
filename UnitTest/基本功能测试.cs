@@ -28,7 +28,7 @@ namespace blqw.IOC
 
             [Export("b")]
             [ExportMetadata("Priority", 1)]
-            public static string b1 { get; set; } = "b";
+            public static string b1 { get; set; } = "b1";
 
             [Export("c")]
             [ExportMetadata("Priority", 100)]
@@ -53,7 +53,7 @@ namespace blqw.IOC
             Assert.IsNotNull(arr);
             Assert.AreEqual(arr.Length, 2);
             Assert.AreEqual("b", arr[0]);
-            Assert.AreEqual("b", arr[1]);
+            Assert.AreEqual("b1", arr[1]);
 
             var s = MEF.PlugIns.Where(p => p.Name == "c" && p.GetMetadata<string>("xyz") == "?").Select(p => p.GetValue<string>()).FirstOrDefault();
             Assert.AreEqual("c1", s);
