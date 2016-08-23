@@ -39,11 +39,12 @@ namespace blqw.IOC
         /// 使用指定的源名称初始化 <see cref="T:System.Diagnostics.TraceSource" /> 类的新实例。
         /// </summary>
         /// <param name="name"> 源的名称，通常为应用程序的名称。 </param>
+        /// <param name="defaultLevel"> 枚举的按位组合，指定要跟踪的默认源级别 </param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="name" /> 为 null。
         /// </exception>
-        public TraceLogger(string name)
-            : base(name, SourceLevels.All)
+        public TraceLogger(string name, SourceLevels defaultLevel)
+            : base(name, defaultLevel)
         {
             _filter = new NameFilter(Attributes["SourceFilter"], Attributes["SourceFilterRegex"]);
             _level = (SourceLevels?)_LevelMap[Attributes["Level"] + ""] ?? Switch?.Level ?? SourceLevels.All;
@@ -74,6 +75,7 @@ namespace blqw.IOC
                 Listeners.Add(new ConsoleTraceListener());
             }
         }
+        
 
         /// <summary>
         /// 调试日志
@@ -109,7 +111,7 @@ namespace blqw.IOC
         /// <exception cref="RegexMatchTimeoutException"> 过滤器正则表达式匹配发生超时。 </exception>
         /// <exception cref="ObjectDisposedException"> 终止期间尝试跟踪事件。 </exception>
         public void Warning(string message, int line = 0, string member = "", string file = "")
-            => TraceWrite(TraceEventType.Warning, SourceLevels.Information, message, line, member, file);
+            => TraceWrite(TraceEventType.Warning, SourceLevels.Warning, message, line, member, file);
 
         /// <summary>
         /// 异常日志
