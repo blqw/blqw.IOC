@@ -34,7 +34,7 @@ namespace blqw.IOC
         public ComponentContainer(Func<TValue, TKey> getKey)
             : this(null, getKey)
         {
-            File.Open("", FileMode.OpenOrCreate, FileAccess.ReadWrite, )
+
         }
 
         /// <summary>
