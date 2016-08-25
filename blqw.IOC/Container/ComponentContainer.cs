@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.ComponentModel.Composition;
+using System.IO;
 using System.Reflection;
 
 namespace blqw.IOC
@@ -33,6 +34,7 @@ namespace blqw.IOC
         public ComponentContainer(Func<TValue, TKey> getKey)
             : this(null, getKey)
         {
+            File.Open("", FileMode.OpenOrCreate, FileAccess.ReadWrite, )
         }
 
         /// <summary>

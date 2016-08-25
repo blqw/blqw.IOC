@@ -42,7 +42,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Container\ComponentContainer.cs" />
+    <Compile Include="Container\SerivceItem.cs" />
     <Compile Include="ComponentServices.cs" />
+    <Compile Include="Container\SerivceContainer.cs" />
     <Compile Include="DefalutComponent.cs" />
     <Compile Include="Logger\GlobalLoggerFilter.cs" />
     <Compile Include="Logger\NameFilter.cs" />
@@ -56,7 +59,6 @@
     </Compile>
     <Compile Include="PlugInContainer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ComponentContainer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="nuget-pack.bat" />

@@ -410,7 +410,6 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="contractName"> 约定名称 </param>
         /// <param name="contractType"> 约定类型 </param>
-        /// <param name="actualType"> 实际类型 </param>
         /// <returns> </returns>
         private static Expression<Func<ExportDefinition, bool>> GetExpression(string contractName, Type contractType)
         {
