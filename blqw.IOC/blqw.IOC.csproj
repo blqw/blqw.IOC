@@ -43,9 +43,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Container\ComponentContainer.cs" />
-    <Compile Include="Container\SerivceItem.cs" />
+    <Compile Include="Container\ServiceItem.cs" />
     <Compile Include="ComponentServices.cs" />
-    <Compile Include="Container\SerivceContainer.cs" />
+    <Compile Include="Container\ServiceContainer.cs" />
     <Compile Include="DefalutComponent.cs" />
     <Compile Include="Logger\GlobalLoggerFilter.cs" />
     <Compile Include="Logger\NameFilter.cs" />

@@ -11,7 +11,7 @@ namespace blqw.IOC
     /// <summary>
     /// 这是一个包装类,当包装对象发生更新时,会触发固定事件
     /// </summary>
-    public class SerivceItem : IObjectHandle, INotifyPropertyChanged, IObjectReference, IServiceProvider
+    public class ServiceItem : IObjectHandle, INotifyPropertyChanged, IObjectReference, IServiceProvider
     {
         private object _systemValue;
         private object _value;
@@ -24,7 +24,7 @@ namespace blqw.IOC
         /// <param name="value"> </param>
         /// <exception cref="ArgumentNullException"> <paramref name="container" /> is <see langword="null" />. </exception>
         /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
-        public SerivceItem(IServiceContainer container, Type serviceType, object value)
+        public ServiceItem(IServiceContainer container, Type serviceType, object value)
         {
             if (container == null)
             {
@@ -143,7 +143,7 @@ namespace blqw.IOC
                 return null;
             }
 
-            var item = new SerivceItem(Container, serviceType, child);
+            var item = new ServiceItem(Container, serviceType, child);
             if (IsSystem) //生成服务与当前服务(依赖服务)属性必须一致
             {
                 item.MakeSystem();
@@ -158,7 +158,7 @@ namespace blqw.IOC
             {
                 return;
             }
-            var parent = (SerivceItem)sender;//依赖服务
+            var parent = (ServiceItem)sender;//依赖服务
             var child = (parent.Value as IServiceProvider)?.GetService(parent.ServiceType); //生成新的服务
             if (child != null) //如果无法生成新的服务,则保留旧服务
             {
@@ -179,13 +179,13 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="item"></param>
         /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null" />.</exception>
-        internal void CopyTo(SerivceItem item)
+        internal void CopyTo(ServiceItem item)
         {
             if (item == null)
             {
                 throw new ArgumentNullException(nameof(item));
             }
-            foreach (var field in typeof(SerivceItem).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            foreach (var field in typeof(ServiceItem).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
             {
                 if (field.IsLiteral == false)
                 {

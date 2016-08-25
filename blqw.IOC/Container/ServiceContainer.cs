@@ -10,12 +10,12 @@ namespace blqw.IOC
     /// <summary>
     /// 服务容器基类
     /// </summary>
-    public abstract class SerivceContainer : IServiceContainer
+    public abstract class ServiceContainer : IServiceContainer
     {
         /// <summary>
         /// 用于保存所有组件
         /// </summary>
-        private readonly ConcurrentDictionary<Type, SerivceItem> _items;
+        private readonly ConcurrentDictionary<Type, ServiceItem> _items;
 
         /// <summary>
         /// 初始化服务容器
@@ -28,7 +28,7 @@ namespace blqw.IOC
         /// <see langword="null" />.
         /// </exception>
         /// <exception cref="OverflowException"> 匹配插件数量超过字典的最大容量 (<see cref="F:System.Int32.MaxValue" />)。 </exception>
-        protected SerivceContainer(string serviceName, Type serviceType, IComparer<Type> typeComparer)
+        protected ServiceContainer(string serviceName, Type serviceType, IComparer<Type> typeComparer)
         {
             TypeComparer = typeComparer;
             if (string.IsNullOrEmpty(serviceName) && (serviceType == null))
@@ -45,14 +45,14 @@ namespace blqw.IOC
                 var id = AttributedModelServices.GetTypeIdentity(serviceType);
                 query = query.Where(p => p.TypeIdentity == id);
             }
-            _items = new ConcurrentDictionary<Type, SerivceItem>();
+            _items = new ConcurrentDictionary<Type, ServiceItem>();
             foreach (var p in query)
             {
                 var value = p.GetValue(serviceType);
                 var type = (Type) p.Metadata?["ServiceType"];
                 if ((value != null) && (type != null))
                 {
-                    _items.TryAdd(type, new SerivceItem(this, type, value));
+                    _items.TryAdd(type, new ServiceItem(this, type, value));
                 }
             }
         }
@@ -114,7 +114,7 @@ namespace blqw.IOC
                 throw new ArgumentNullException(nameof(serviceInstance));
             }
             _items.AddOrUpdate(serviceType
-                , k => new SerivceItem(this, serviceType, serviceInstance)
+                , k => new ServiceItem(this, serviceType, serviceInstance)
                 , (k, v) =>
                 {
                     v.AutoUpdate = false;
@@ -170,7 +170,7 @@ namespace blqw.IOC
             {
                 throw new ArgumentNullException(nameof(serviceType));
             }
-            SerivceItem item;
+            ServiceItem item;
             if (_items.TryGetValue(serviceType, out item) == false)
             {
                 return;
@@ -194,16 +194,16 @@ namespace blqw.IOC
             => RemoveService(serviceType);
 
         /// <summary>
-        /// 根据 <paramref name="serviceType" /> 创建一个 <seealso cref="SerivceItem" />
+        /// 根据 <paramref name="serviceType" /> 创建一个 <seealso cref="ServiceItem" />
         /// </summary>
         /// <param name="serviceType"> 服务组件类型 </param>
         /// <returns> </returns>
-        private SerivceItem CreateServiceItem(Type serviceType)
+        private ServiceItem CreateServiceItem(Type serviceType)
         {
             var ee = Match(serviceType);
             while (ee.MoveNext())
             {
-                var item = (SerivceItem) ee.Current.GetService(serviceType);
+                var item = (ServiceItem) ee.Current.GetService(serviceType);
                 if (item == null)
                 {
                     continue;
@@ -223,7 +223,7 @@ namespace blqw.IOC
                 }
                 return item;
             }
-            return new SerivceItem(this, serviceType, null) { AutoUpdate = false };
+            return new ServiceItem(this, serviceType, null) { AutoUpdate = false };
         }
 
         /// <summary>
@@ -231,9 +231,9 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="serviceType"> </param>
         /// <returns> </returns>
-        private IEnumerator<SerivceItem> Match(Type serviceType)
+        private IEnumerator<ServiceItem> Match(Type serviceType)
         {
-            SerivceItem item;
+            ServiceItem item;
 
             //精确匹配当前类 或 泛型定义 (优先级最高)
             if (_items.TryGetValue(serviceType, out item))
@@ -293,16 +293,16 @@ namespace blqw.IOC
         }
 
         /// <summary>
-        /// 获取与 <paramref name="genericType" /> 的泛型定义类型匹配的 <see cref="SerivceItem" />,如果
+        /// 获取与 <paramref name="genericType" /> 的泛型定义类型匹配的 <see cref="ServiceItem" />,如果
         /// <paramref name="genericType" /> 不是泛型,返回 null
         /// </summary>
         /// <param name="genericType"> 用于匹配的 <see cref="Type" /> </param>
         /// <returns> </returns>
-        private SerivceItem MatchGeneric(Type genericType)
+        private ServiceItem MatchGeneric(Type genericType)
         {
             if (genericType.IsGenericType && (genericType.IsGenericTypeDefinition == false))
             {
-                SerivceItem item;
+                ServiceItem item;
                 if (_items.TryGetValue(genericType.GetGenericTypeDefinition(), out item))
                 {
                     return item;
