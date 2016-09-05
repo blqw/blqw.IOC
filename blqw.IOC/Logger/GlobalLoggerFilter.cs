@@ -17,7 +17,7 @@ namespace blqw.IOC
         /// <summary>
         /// 日志跟踪等级
         /// </summary>
-        private readonly SourceLevels _level;
+        private readonly int _level;
 
         /// <summary>
         /// 日志模块过滤
@@ -36,12 +36,12 @@ namespace blqw.IOC
             : base("blqw", SourceLevels.All)
         {
             _sourceFilter = new NameFilter(Attributes["SourceFilter"], Attributes["SourceFilterRegex"]);
-            _moduleFilter = new NameFilter(Attributes["ModuleFilter"], Attributes["ModuleFilterRegex"]);
+            _moduleFilter = new NameFilter(Attributes["FeatureFilter"], Attributes["FeatureFilterRegex"]);
 
-            var level = Attributes["Level"];
-            if (string.IsNullOrEmpty(level) || (Enum.TryParse(level, out _level) == false))
+            LogLevel level;
+            if ((Enum.TryParse(Attributes["Level"], out level) == false))
             {
-                _level = Switch?.Level ?? SourceLevels.All;
+                _level = (int)(Switch?.Level ?? SourceLevels.All);
             }
         }
 
@@ -52,19 +52,19 @@ namespace blqw.IOC
         /// 对跟踪源支持的自定义特性进行命名的字符串数组；如果不存在自定义特性，则为 null。
         /// </returns>
         protected override string[] GetSupportedAttributes()
-            => new[] {"SourceFilter", "SourceFilterRegex", "Level", "ModuleFilter", "ModuleFilterRegex"};
+            => new[] { "SourceFilter", "SourceFilterRegex", "Level", "FeatureFilter", "FeatureFilterRegex" };
 
         /// <summary>
         /// 确定是否应记录日志
         /// </summary>
-        /// <param name="source"> </param>
-        /// <param name="module"> </param>
-        /// <param name="level"> </param>
+        /// <param name="source"> 跟踪源的名称 </param>
+        /// <param name="feature"> 跟踪功能的名称 </param>
+        /// <param name="type"> 事件类型 </param>
         /// <returns> </returns>
         /// <exception cref="RegexMatchTimeoutException"> 正则表达式匹配发生超时 </exception>
-        public static bool ShouldTrace(string source, string module, SourceLevels level)
-            => Instance._level.HasFlag(level)
+        public static bool ShouldTrace(string source, string feature, TraceEventType type)
+            => (Instance._level & (int)type) != 0
                && (Instance._sourceFilter.IsMatch(source) == false)
-               && (Instance._moduleFilter.IsMatch(module) == false);
+               && (Instance._moduleFilter.IsMatch(feature) == false);
     }
 }
