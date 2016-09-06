@@ -48,6 +48,8 @@
     <Compile Include="Container\ServiceContainer.cs" />
     <Compile Include="DefalutComponent.cs" />
     <Compile Include="Logger\GlobalLoggerFilter.cs" />
+    <Compile Include="Logger\LogLevel.cs" />
+    <Compile Include="Logger\LogLevels.cs" />
     <Compile Include="Logger\NameFilter.cs" />
     <Compile Include="Logger\TraceLogger.cs" />
     <Compile Include="Logger\ILogger.cs" />

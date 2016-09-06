@@ -1,5 +1,4 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace blqw.IOC
@@ -17,7 +16,7 @@ namespace blqw.IOC
         /// <summary>
         /// 日志跟踪等级
         /// </summary>
-        private readonly int _level;
+        private readonly LogLevel _level;
 
         /// <summary>
         /// 日志模块过滤
@@ -37,12 +36,7 @@ namespace blqw.IOC
         {
             _sourceFilter = new NameFilter(Attributes["SourceFilter"], Attributes["SourceFilterRegex"]);
             _moduleFilter = new NameFilter(Attributes["FeatureFilter"], Attributes["FeatureFilterRegex"]);
-
-            LogLevel level;
-            if ((Enum.TryParse(Attributes["Level"], out level) == false))
-            {
-                _level = (int)(Switch?.Level ?? SourceLevels.All);
-            }
+            _level = new LogLevel(Attributes["Level"], (int) (Switch?.Level ?? SourceLevels.All));
         }
 
         /// <summary>
@@ -63,7 +57,7 @@ namespace blqw.IOC
         /// <returns> </returns>
         /// <exception cref="RegexMatchTimeoutException"> 正则表达式匹配发生超时 </exception>
         public static bool ShouldTrace(string source, string feature, TraceEventType type)
-            => (Instance._level & (int)type) != 0
+            => Instance._level.HasPart(type)
                && (Instance._sourceFilter.IsMatch(source) == false)
                && (Instance._moduleFilter.IsMatch(feature) == false);
     }

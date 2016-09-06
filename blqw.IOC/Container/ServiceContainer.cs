@@ -49,10 +49,12 @@ namespace blqw.IOC
             foreach (var p in query)
             {
                 var value = p.GetValue(serviceType);
-                var type = (Type) p.Metadata?["ServiceType"];
+                var type =  p.Metadata?["ServiceType"] as Type;
                 if ((value != null) && (type != null))
                 {
-                    _items.TryAdd(type, new ServiceItem(this, type, value));
+                    var item = new ServiceItem(this, type, value);
+                    item.MakeSystem(); //默认为系统插件
+                    _items.TryAdd(type, item);
                 }
             }
         }
@@ -66,21 +68,30 @@ namespace blqw.IOC
         /// 获取指定类型的服务对象。
         /// </summary>
         /// <returns>
-        /// <paramref name="serviceType" /> 类型的服务对象。- 或 -如果没有 <paramref name="serviceType" /> 类型的服务对象，则为 null。
+        /// <paramref name="serviceType" /> 类型的服务对象。
         /// </returns>
         /// <param name="serviceType"> 一个对象，它指定要获取的服务对象的类型。 </param>
         /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
         /// <exception cref="OverflowException"> 字典中已包含元素的最大数目 (<see cref="F:System.Int32.MaxValue" />)。 </exception>
-        public object GetService(Type serviceType)
+        public object GetService(Type serviceType) => GetServiceItem(serviceType)?.Value;
+
+        /// <summary>
+        /// 获取指定类型的服务对象的包装对象。
+        /// </summary>
+        /// <paramref name="serviceType" /> 类型的服务对象。
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
+        /// <exception cref="OverflowException"> 字典中已包含元素的最大数目 (<see cref="F:System.Int32.MaxValue" />)。 </exception>
+        public ServiceItem GetServiceItem(Type serviceType)
         {
             if (serviceType == null)
             {
                 throw new ArgumentNullException(nameof(serviceType));
             }
             var item = _items.GetOrAdd(serviceType, CreateServiceItem); //获取服务项, 不会为空
-            if ((item.Value != null) || (item.AutoUpdate == false)) //如果值不为空,或者不需要自动更新,则直接返回null
+            if ((item.Value != null) || (item.AutoUpdate == false)) //如果值不为空,或者不需要自动更新,则直接返回 item
             {
-                return item.Value;
+                return item;
             }
             //尝试更新服务项
             lock (item)
@@ -92,7 +103,7 @@ namespace blqw.IOC
                     newItem.CopyTo(item);
                 }
             }
-            return item.Value;
+            return item;
         }
 
         /// <summary>
@@ -203,7 +214,7 @@ namespace blqw.IOC
             var ee = Match(serviceType);
             while (ee.MoveNext())
             {
-                var item = (ServiceItem) ee.Current.GetService(serviceType);
+                var item = ee.Current.GetServiceItem(serviceType);
                 if (item == null)
                 {
                     continue;
@@ -310,5 +321,10 @@ namespace blqw.IOC
             }
             return null;
         }
+
+        /// <summary>
+        /// 服务组件个数
+        /// </summary>
+        public int Count => _items.Count;
     }
 }

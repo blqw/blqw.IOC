@@ -38,13 +38,16 @@ namespace blqw.IOC
         /// <remarks> 这里不使用直接属性赋值,是因为在某些情况下会出现未知的问题 </remarks>
         static MEF()
         {
-            LogServices.Logger?.Warning("开始初始化MEF");
+            LogServices.Logger?.Write(TraceEventType.Start, "开始初始化MEF");
             var sw = Stopwatch.StartNew();
             Container = GetContainer();
             sw.Stop();
             var time = sw.Elapsed.TotalMilliseconds;
-            LogServices.Logger?.Debug(() => "===插件列表===" + Environment.NewLine + string.Join(Environment.NewLine, Container.Catalog.Parts) + Environment.NewLine + $"=== 共{Container.Catalog.Count()}个 ===");
-            LogServices.Logger?.Warning(() => $"MEF初始化完成, 耗时 {time} ms");
+            LogServices.Logger?.Write(TraceEventType.Verbose,
+                () =>
+                    "===插件列表===" + Environment.NewLine + string.Join(Environment.NewLine, Container.Catalog.Parts) +
+                    Environment.NewLine + $"=== 共{Container.Catalog.Count()}个 ===");
+            LogServices.Logger?.Write(TraceEventType.Stop, () => $"MEF初始化完成, 耗时 {time} ms");
         }
 
         /// <summary>
@@ -114,7 +117,7 @@ namespace blqw.IOC
                 }
                 catch (Exception ex)
                 {
-                    LogServices.Logger?.Error($"文件加载失败{file}", ex);
+                    LogServices.Logger?.Write(TraceEventType.Error, $"文件加载失败{file}", ex);
                 }
             }
             AppDomain.Unload(domain);
@@ -145,7 +148,7 @@ namespace blqw.IOC
             {
                 return null;
             }
-            LogServices.Logger?.Information($"开始装载程序集 -> {assembly.FullName}");
+            LogServices.Logger?.Write(TraceEventType.Start, $"开始装载程序集 -> {assembly.FullName}");
             Type[] types;
             try
             {
@@ -157,7 +160,7 @@ namespace blqw.IOC
             }
             catch (Exception ex)
             {
-                LogServices.Logger?.Error("程序集装载失败", ex);
+                LogServices.Logger?.Write(TraceEventType.Error, "程序集装载失败", ex);
                 return null;
             }
             var list = new List<ComposablePartCatalog>();
@@ -172,17 +175,17 @@ namespace blqw.IOC
                     }
                     typeName = type.FullName;
                     list.Add(new TypeCatalog(type));
-                    LogServices.Logger?.Debug($"类型装载完成 -> {typeName}");
+                    LogServices.Logger?.Write(TraceEventType.Verbose, $"类型装载完成 -> {typeName}");
                 }
                 catch (Exception ex)
                 {
                     if (typeName != null)
                     {
-                        LogServices.Logger?.Error($"类型装载失败 -> {typeName}", ex);
+                        LogServices.Logger?.Write(TraceEventType.Error, $"类型装载失败 -> {typeName}", ex);
                     }
                 }
             }
-            LogServices.Logger?.Information($"程序集装载完成 -> {assembly.FullName}");
+            LogServices.Logger?.Write(TraceEventType.Stop, $"程序集装载完成 -> {assembly.FullName}");
             return list;
         }
 
@@ -196,7 +199,7 @@ namespace blqw.IOC
             var type = instance as Type;
             if (type != null)
             {
-                Import(type, null);
+                Import(type);
                 return;
             }
             try
@@ -206,7 +209,7 @@ namespace blqw.IOC
             }
             catch (CompositionException ex)
             {
-                LogServices.Logger.Error("组合插件失败", ex);
+                LogServices.Logger.Write(TraceEventType.Error, "组合插件失败", ex);
             }
             Import(instance.GetType(), instance);
         }
@@ -216,6 +219,10 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="type"> </param>
         /// <param name="instance"> </param>
+        /// <exception cref="FieldAccessException">
+        /// 在 .NET for Windows Store 应用程序 或 可移植类库 中，请改为捕获基类异常
+        /// <see cref="T:System.MemberAccessException" />。调用方没有访问此字段的权限。
+        /// </exception>
         public static void Import(Type type, object instance = null)
         {
             var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
@@ -414,39 +421,20 @@ namespace blqw.IOC
         private static Expression<Func<ExportDefinition, bool>> GetExpression(string contractName, Type contractType)
         {
             var p = Expression.Parameter(typeof(ExportDefinition), "p");
-            Expression left = null;
-            Expression right = null;
             var typeid = AttributedModelServices.GetTypeIdentity(contractType);
             var a = Expression.Property(p, "ContractName");
-            left = Expression.Equal(a, Expression.Constant(contractName ?? typeid));
-
-
-            if (contractType != typeof(object))
-            {
-                var metadata = Expression.Property(p, "Metadata");
-                var typeIdentity = Expression.Constant("ExportTypeIdentity");
-                var containsKey = Expression.Call(metadata, _ContainsKey, typeIdentity);
-
-                var getItem = Expression.Call(metadata, _GetItem, typeIdentity);
-                var equals = typeof(string).GetMethod("Equals", new[] { typeof(object) });
-                right = Expression.AndAlso(containsKey, Expression.Call(Expression.Constant(typeid), equals, getItem));
-            }
-
-            if ((left == null) && (right == null))
-            {
-                var @true = Expression.Constant(true);
-                return Expression.Lambda<Func<ExportDefinition, bool>>(@true, p);
-            }
-
-            if (left == null)
-            {
-                return Expression.Lambda<Func<ExportDefinition, bool>>(right, p);
-            }
-
-            if (right == null)
+            var left = Expression.Equal(a, Expression.Constant(contractName ?? typeid));
+            if (contractType == typeof(object))
             {
                 return Expression.Lambda<Func<ExportDefinition, bool>>(left, p);
             }
+            var metadata = Expression.Property(p, "Metadata");
+            var typeIdentity = Expression.Constant("ExportTypeIdentity");
+            var containsKey = Expression.Call(metadata, _ContainsKey, typeIdentity);
+
+            var getItem = Expression.Call(metadata, _GetItem, typeIdentity);
+            var equals = typeof(string).GetMethod("Equals", new[] { typeof(object) });
+            var right = Expression.AndAlso(containsKey, Expression.Call(Expression.Constant(typeid), equals, getItem));
 
             var c = Expression.AndAlso(left, right);
             return Expression.Lambda<Func<ExportDefinition, bool>>(c, p);
@@ -465,7 +453,7 @@ namespace blqw.IOC
             {
                 if (import.MemberType.IsArray || import.MemberType.IsInterface)
                 {
-                    var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(import.ExportedType));
+                    var list = (IList) Activator.CreateInstance(typeof(List<>).MakeGenericType(import.ExportedType));
                     foreach (var export in exports)
                     {
                         var value = ConvertExportedValue(() => export.Value, import.ExportedType);
@@ -522,7 +510,7 @@ namespace blqw.IOC
             }
             catch (Exception ex)
             {
-                LogServices.Logger.Error("组合插件失败", ex);
+                LogServices.Logger.Write(TraceEventType.Error, "组合插件失败", ex);
             }
 
             return null;
@@ -582,7 +570,7 @@ namespace blqw.IOC
                 }
 
                 //返回优先级最高的一个或者没有
-                return exports.OrderByDescending(it =>
+                return exports?.OrderByDescending(it =>
                 {
                     object priority;
                     if (it.Metadata.TryGetValue("Priority", out priority))
@@ -601,7 +589,8 @@ namespace blqw.IOC
         /// <summary>
         /// 插件容器
         /// </summary>
-        public static PlugInContainer PlugIns => _PlugIns ?? (_PlugIns = (Container == null ? null : new PlugInContainer(Container.Catalog)));
+        public static PlugInContainer PlugIns
+            => _PlugIns ?? (_PlugIns = Container == null ? null : new PlugInContainer(Container.Catalog));
 
         #endregion
     }

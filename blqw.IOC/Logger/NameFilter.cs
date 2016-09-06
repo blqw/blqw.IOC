@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace blqw.IOC
 {
@@ -16,6 +14,7 @@ namespace blqw.IOC
         /// 需要过滤的名称,不区分大小写
         /// </summary>
         private readonly HashSet<string> _names;
+
         /// <summary>
         /// 需要过滤名称的正则表达式
         /// </summary>
@@ -30,7 +29,7 @@ namespace blqw.IOC
         {
             if (string.IsNullOrWhiteSpace(names) == false)
             {
-                _names = new HashSet<string>(names.Split(',').Select(it=>it.Trim()), StringComparer.OrdinalIgnoreCase);
+                _names = new HashSet<string>(names.Split(',').Select(it => it.Trim()), StringComparer.OrdinalIgnoreCase);
             }
             if (string.IsNullOrWhiteSpace(regex) == false)
             {
@@ -38,12 +37,13 @@ namespace blqw.IOC
             }
         }
 
-        /// <summary> 
+        /// <summary>
         /// 是否有匹配
         /// </summary>
-        /// <param name="name">判断名称是否被匹配</param>
-        /// <returns></returns>
-        /// <exception cref="RegexMatchTimeoutException">正则表达式匹配发生超时。</exception>
-        public bool IsMatch(string name) => name != null && (_names?.Contains(name) == true || _regex?.IsMatch(name) == true);
+        /// <param name="name"> 判断名称是否被匹配 </param>
+        /// <returns> </returns>
+        /// <exception cref="RegexMatchTimeoutException"> 正则表达式匹配发生超时。 </exception>
+        public bool IsMatch(string name)
+            => (name != null) && ((_names?.Contains(name) == true) || (_regex?.IsMatch(name) == true));
     }
 }
