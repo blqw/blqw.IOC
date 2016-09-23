@@ -7,7 +7,7 @@
 ```csharp
 public class MyClass
 {
-    [Export("加密")]
+    [Export("加密")] //申明导出功能
     public static string Encryption(string str)
     {
         if (string.IsNullOrEmpty(str))
@@ -25,10 +25,10 @@ static class Components
 {
     static Components()
     {
-        MEF.Import(typeof(Components));
+        MEF.Import(typeof(Components)); //导入所有静态属性/字段的功能
     }
 
-    [Import("加密")]
+    [Import("加密")] //申明导入功能
     public static Func<string, string> Encryption;
 
 }
