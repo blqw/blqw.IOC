@@ -49,15 +49,28 @@ namespace blqw.IOC
             foreach (var p in query)
             {
                 var value = p.GetValue(serviceType);
-                var type =  p.Metadata?["ServiceType"] as Type;
-                if ((value != null) && (type != null))
+                if (value == null)
                 {
-                    var item = new ServiceItem(this, type, value);
-                    item.MakeSystem(); //默认为系统插件
-                    _items.TryAdd(type, item);
+                    continue;
                 }
+                var type = GetServiceType(p, value);
+                if (type == null)
+                {
+                    continue;
+                }
+                var item = new ServiceItem(this, type, value);
+                item.MakeSystem(); //默认为系统插件
+                _items.TryAdd(type, item);
             }
         }
+
+        /// <summary>
+        /// 获取插件的服务类型 <see cref="Type"/>, 默认 <code>plugIn.GetMetadata&lt;Type&gt;("ServiceType")</code>
+        /// </summary>
+        /// <param name="plugIn"> 插件 </param>
+        /// <param name="value"> 插件值 </param>
+        /// <returns></returns>
+        protected virtual Type GetServiceType(PlugIn plugIn, object value) => plugIn.GetMetadata<Type>("ServiceType");
 
         /// <summary>
         /// 用于比较服务之间的优先级
@@ -155,7 +168,7 @@ namespace blqw.IOC
         /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
         /// <exception cref="ArgumentNullException"> <paramref name="callback" /> is <see langword="null" />. </exception>
         public void AddService(Type serviceType, ServiceCreatorCallback callback)
-            => AddService(serviceType, (object) callback);
+            => AddService(serviceType, (object)callback);
 
         /// <summary>
         /// 将指定服务添加到服务容器中，并可选择将该服务提升到父服务容器。
@@ -167,7 +180,7 @@ namespace blqw.IOC
         /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
         /// <exception cref="ArgumentNullException"> <paramref name="callback" /> is <see langword="null" />. </exception>
         public void AddService(Type serviceType, ServiceCreatorCallback callback, bool promote)
-            => AddService(serviceType, (object) callback);
+            => AddService(serviceType, (object)callback);
 
         /// <summary>
         /// 从服务容器中移除指定的服务类型。
@@ -217,9 +230,9 @@ namespace blqw.IOC
                 var item = ee.Current.GetServiceItem(serviceType);
                 if (item == null)
                 {
-                    continue;
+                    item = ee.Current;
                 }
-                if (ReferenceEquals(item, ee.Current))
+                else if (ReferenceEquals(item, ee.Current))
                 {
                     return item;
                 }
@@ -234,7 +247,7 @@ namespace blqw.IOC
                 }
                 return item;
             }
-            return new ServiceItem(this, serviceType, null) { AutoUpdate = false };
+            return GetServiceItem(typeof(object));
         }
 
         /// <summary>

@@ -1,4 +1,104 @@
 ﻿# 基于微软MEF组件的插件管理组件
+
+## 插件式解耦
+组件与组件之间依赖插件协议而不是具体实现或具体接口
+
+* #### 定义导出功能
+```csharp
+public class MyClass
+{
+    [Export("加密")]
+    public static string Encryption(string str)
+    {
+        if (string.IsNullOrEmpty(str))
+        {
+            return string.Empty;
+        }
+        return Convert.ToBase64String(Encoding.UTF8.GetBytes(str));
+    }
+}
+```
+
+* #### 功能导入
+```csharp
+static class Components
+{
+    static Components()
+    {
+        MEF.Import(typeof(Components));
+    }
+
+    [Import("加密")]
+    public static Func<string, string> Encryption;
+
+}
+```
+
+* #### 使用插件
+```csharp
+static void Main(string[] args)
+{
+    Console.WriteLine(Components.Encryption(""));      //空字符串
+    Console.WriteLine(Components.Encryption("aaaa"));  //YWFhYQ==
+}
+```
+
+* #### 替换原有功能
+```csharp
+public class MyClass2
+{
+    [Export("加密")]
+    [ExportMetadata("Priority", 1)] //增加优先级
+    public static string Encryption(string str)
+    {
+        if (string.IsNullOrEmpty(str))
+        {
+            return Guid.Empty.ToString("n");
+        }
+        return ToMD5_Fast(str).ToString("n");
+    }
+
+    /// <summary> 使用MD5加密
+    /// </summary>
+    /// <param name="input">加密字符串</param>
+    /// <remarks>周子鉴 2015.08.26</remarks>
+    public static Guid ToMD5_Fast(string input)
+    {
+        using (var md5Provider = new MD5CryptoServiceProvider())
+        {
+            var bytes = Encoding.UTF8.GetBytes(input);
+            var hash = md5Provider.ComputeHash(bytes);
+            Swap(hash, 0, 3);   //交换0,3的值
+            Swap(hash, 1, 2);   //交换1,2的值
+            Swap(hash, 4, 5);   //交换4,5的值
+            Swap(hash, 6, 7);   //交换6,7的值
+            return new Guid(hash);
+        }
+    }
+
+    private static void Swap(byte[] arr, int a, int b)
+    {
+        var temp = arr[a];
+        arr[a] = arr[b];
+        arr[b] = temp;
+    }
+}
+```
+```csharp
+static void Main(string[] args)
+{
+    Console.WriteLine(Components.Encryption(""));      //00000000000000000000000000000000
+    Console.WriteLine(Components.Encryption("aaaa"));  //74b87337454200d4d33f80c4663dc5e5
+}
+```
+
+--------
+
+## 更新日志
+#### [v.1.3.0] 2016.09.23
+* 修复部分bug
+* 优化日志
+
 #### 2016.08.10
 * 优化默认插件的行为
 

@@ -8,8 +8,8 @@ namespace blqw.IOC
     public static class LogServices
     {
         /// <summary>
-        /// 全局日志记录器, 默认级别: 警告
+        /// 全局日志记录器, 默认级别: <see cref="SourceLevels.Warning"/> | <see cref="SourceLevels.ActivityTracing"/>
         /// </summary>
-        public static ILogger Logger { get; set; } = new TraceLogger("blqw.IOC", LogLevels.Warning | LogLevels.ActivityTracing);
+        public static TraceSource Logger { get; set; } = new TraceSource("blqw.IOC", SourceLevels.Warning | SourceLevels.ActivityTracing).Initialize();
     }
 }

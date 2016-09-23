@@ -44,9 +44,8 @@ namespace blqw.IOC
             sw.Stop();
             var time = sw.Elapsed.TotalMilliseconds;
             LogServices.Logger?.Write(TraceEventType.Verbose,
-                () =>
-                    "===插件列表===" + Environment.NewLine + string.Join(Environment.NewLine, Container.Catalog.Parts) +
-                    Environment.NewLine + $"=== 共{Container.Catalog.Count()}个 ===");
+                () => "===插件列表===" + Environment.NewLine + string.Join(Environment.NewLine, Container.Catalog.Parts) +
+                      Environment.NewLine + $"=== 共{Container.Catalog.Count()}个 ===");
             LogServices.Logger?.Write(TraceEventType.Stop, () => $"MEF初始化完成, 耗时 {time} ms");
         }
 
@@ -102,8 +101,10 @@ namespace blqw.IOC
                     files.Remove(a.Location);
                 }
             }
-            var domain = AppDomain.CreateDomain("mef");
 
+            LogServices.Logger?.Write(TraceEventType.Start, $"扫描动态文件 -> 文件个数:{files.Count}");
+            var domain = AppDomain.CreateDomain("mef");
+            LogServices.Logger?.Write(TraceEventType.Start, "新建临时程序域");
             foreach (var file in files)
             {
                 try
@@ -120,7 +121,9 @@ namespace blqw.IOC
                     LogServices.Logger?.Write(TraceEventType.Error, $"文件加载失败{file}", ex);
                 }
             }
+            LogServices.Logger?.Write(TraceEventType.Stop, "卸载程序域");
             AppDomain.Unload(domain);
+            LogServices.Logger?.Write(TraceEventType.Stop, "文件处理完成");
             return new SelectionPriorityContainer(catalogs);
         }
 

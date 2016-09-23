@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Remoting;
@@ -11,6 +12,7 @@ namespace blqw.IOC
     /// <summary>
     /// 这是一个包装类,当包装对象发生更新时,会触发固定事件
     /// </summary>
+    [DebuggerDisplay("ServiceType = {ServiceType}, IsSystem = {IsSystem}, AutoUpdate = {AutoUpdate}")]
     public sealed class ServiceItem : IObjectHandle, INotifyPropertyChanged, IObjectReference, IServiceProvider
     {
         /// <summary>
@@ -88,6 +90,7 @@ namespace blqw.IOC
                     }
                     _value = _systemValue;
                     IsSystem = true;
+                    OnPropertyChanged();
                 }
                 else if (_value != value)
                 {
@@ -135,7 +138,7 @@ namespace blqw.IOC
             {
                 return this;
             }
-            return (Value as IServiceProvider)?.GetService(ServiceType); //生成新的服务
+            return (Value as IServiceProvider)?.GetService(serviceType); //生成新的服务
         }
 
         /// <summary>
@@ -153,7 +156,7 @@ namespace blqw.IOC
             {
                 throw new ArgumentException($"{nameof(serviceType)}不能是{nameof(ServiceItem)}类型");
             }
-            var child = (Value as IServiceProvider)?.GetService(ServiceType); //生成新的服务
+            var child = (Value as IServiceProvider)?.GetService(serviceType); //生成新的服务
 
             if (child == null)
             {
@@ -165,7 +168,7 @@ namespace blqw.IOC
             {
                 item.MakeSystem();
             }
-            PropertyChanged += item.Item_PropertyChanged; //当当前服务(依赖服务)发生属性变化时需要通知生成服务
+            PropertyChanged += item.ParentPropertyChanged; //当当前服务(依赖服务)发生属性变化时需要通知生成服务
             return item;
         }
 
@@ -179,18 +182,18 @@ namespace blqw.IOC
         }
 
 
-        private void Item_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void ParentPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (!AutoUpdate) //自动更新
             {
                 return;
             }
             var parent = (ServiceItem)sender; //依赖服务
-            var child = (parent.Value as IServiceProvider)?.GetService(parent.ServiceType); //生成新的服务
+            var child = (parent.Value as IServiceProvider)?.GetService(ServiceType); //生成新的服务
             if (child != null) //如果无法生成新的服务,则保留旧服务
             {
-                parent.IsSystem = IsSystem; //生成服务与依赖服务属性必须一致
-                parent.Value = child;
+                IsSystem = parent.IsSystem; //生成服务与依赖服务属性必须一致
+                Value = child;
             }
         }
 
@@ -226,5 +229,6 @@ namespace blqw.IOC
                 }
             }
         }
+        
     }
 }
