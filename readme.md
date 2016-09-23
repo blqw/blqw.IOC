@@ -3,7 +3,7 @@
 ## 插件式解耦
 组件与组件之间依赖插件协议而不是具体实现或具体接口
 
-* #### 定义导出功能
+#### * 定义导出功能
 ```csharp
 public class MyClass
 {
@@ -19,7 +19,7 @@ public class MyClass
 }
 ```
 
-* #### 功能导入
+#### * 功能导入
 ```csharp
 static class Components
 {
@@ -34,7 +34,7 @@ static class Components
 }
 ```
 
-* #### 使用插件
+#### * 使用插件
 ```csharp
 static void Main(string[] args)
 {
@@ -43,7 +43,7 @@ static void Main(string[] args)
 }
 ```
 
-* #### 替换原有功能
+#### * 替换原有功能
 ```csharp
 public class MyClass2
 {
