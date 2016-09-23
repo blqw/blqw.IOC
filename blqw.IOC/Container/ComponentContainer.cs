@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.ComponentModel.Composition;
+using System.Diagnostics;
 using System.Reflection;
 
 namespace blqw.IOC
@@ -16,10 +17,12 @@ namespace blqw.IOC
         /// 用于获取组件的键
         /// </summary>
         private readonly Func<TValue, TKey> _getKey;
+
         /// <summary>
         /// 用户保存所有组件
         /// </summary>
         private readonly ConcurrentDictionary<TKey, TValue> _items;
+
         /// <summary>
         /// 用于从 <seealso cref="PlugIn" /> 中获取组件
         /// </summary>
@@ -30,6 +33,7 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="getKey"> 用于获取组件的键 </param>
         /// <exception cref="ArgumentNullException"> <paramref name="getKey" /> is <see langword="null" />. </exception>
+        /// <exception cref="TargetException"> 从PlugIn中获取组件出现异常 </exception>
         public ComponentContainer(Func<TValue, TKey> getKey)
             : this(null, getKey)
         {
@@ -41,6 +45,7 @@ namespace blqw.IOC
         /// <param name="getKey"> 用于获取组件的键 </param>
         /// <param name="select"> 用于从 <seealso cref="PlugIn" /> 中获取组件 </param>
         /// <exception cref="ArgumentNullException"> <paramref name="getKey" /> is <see langword="null" />. </exception>
+        /// <exception cref="TargetException"> 从PlugIn中获取组件出现异常 </exception>
         public ComponentContainer(Func<PlugIn, TValue> select, Func<TValue, TKey> getKey)
         {
             if (getKey == null)
@@ -124,7 +129,7 @@ namespace blqw.IOC
             catch (Exception ex)
             {
                 const string messgae = "从PlugIn中获取组件出现异常";
-                LogServices.Logger?.Error(messgae, ex);
+                LogServices.Logger?.Write(TraceEventType.Error, messgae, ex);
                 throw new TargetException(messgae, ex);
             }
         }
@@ -144,7 +149,7 @@ namespace blqw.IOC
             catch (Exception ex)
             {
                 const string messgae = "获取组件的键出现异常";
-                LogServices.Logger?.Error(messgae, ex);
+                LogServices.Logger?.Write(TraceEventType.Error, messgae, ex);
                 throw new TargetException(messgae, ex);
             }
         }

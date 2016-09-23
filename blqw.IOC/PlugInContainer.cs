@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.Composition.Hosting;
 using System.ComponentModel.Composition.Primitives;
+using System.Diagnostics;
 using System.Linq;
 
 namespace blqw.IOC
@@ -317,7 +318,7 @@ namespace blqw.IOC
                     }
                     catch (Exception ex)
                     {
-                        LogServices.Logger?.Error("插件载入失败", ex);
+                        LogServices.Logger?.Write(TraceEventType.Error, "插件载入失败", ex);
                     }
                 }
             }
