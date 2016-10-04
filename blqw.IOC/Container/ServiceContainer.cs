@@ -58,9 +58,10 @@ namespace blqw.IOC
                 {
                     continue;
                 }
-                var item = new ServiceItem(this, type, value);
+                var item = new ServiceItem(this, type, value, p);
                 item.MakeSystem(); //默认为系统插件
-                _items.TryAdd(type, item);
+
+                _items.AddOrUpdate(type, item, (t, old) => old.PlugIn.Priority > item.PlugIn.Priority ? old : item);
             }
         }
 
@@ -138,7 +139,7 @@ namespace blqw.IOC
                 throw new ArgumentNullException(nameof(serviceInstance));
             }
             _items.AddOrUpdate(serviceType
-                , k => new ServiceItem(this, serviceType, serviceInstance)
+                , k => new ServiceItem(this, serviceType, serviceInstance, null)
                 , (k, v) =>
                 {
                     v.AutoUpdate = false;

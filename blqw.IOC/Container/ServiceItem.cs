@@ -31,10 +31,11 @@ namespace blqw.IOC
         /// <param name="container"> 服务组件容器 </param>
         /// <param name="serviceType"> 服务组件类型 </param>
         /// <param name="value"> 服务组件 </param>
+        /// <param name="plugIn"> 插件 </param>
         /// <exception cref="ArgumentNullException"> <paramref name="container" /> is <see langword="null" />. </exception>
         /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
-        /// <exception cref="ArgumentException"><see cref="serviceType"/> 为 <seealso cref="ServiceItem"/> 类型.</exception>
-        public ServiceItem(IServiceContainer container, Type serviceType, object value)
+        /// <exception cref="ArgumentException"><paramref name="serviceType"/> 为 <seealso cref="ServiceItem"/> 类型.</exception>
+        public ServiceItem(IServiceContainer container, Type serviceType, object value, PlugIn plugIn)
         {
             if (container == null)
             {
@@ -50,6 +51,7 @@ namespace blqw.IOC
             }
             Container = container;
             ServiceType = serviceType;
+            PlugIn = plugIn;
             _value = value;
         }
 
@@ -62,6 +64,11 @@ namespace blqw.IOC
         /// 服务约定类型
         /// </summary>
         public Type ServiceType { get; }
+
+        /// <summary>
+        /// 插件
+        /// </summary>
+        public PlugIn PlugIn { get; }
 
         /// <summary>
         /// 服务组件
@@ -152,7 +159,7 @@ namespace blqw.IOC
         /// <exception cref="ArgumentException"><see cref="serviceType"/> 为 <seealso cref="ServiceItem"/> 类型.</exception>
         public ServiceItem GetServiceItem(Type serviceType)
         {
-            if (serviceType == ServiceType)
+            if (serviceType == typeof(ServiceItem))
             {
                 throw new ArgumentException($"{nameof(serviceType)}不能是{nameof(ServiceItem)}类型");
             }
@@ -163,7 +170,7 @@ namespace blqw.IOC
                 return null;
             }
 
-            var item = new ServiceItem(Container, serviceType, child);
+            var item = new ServiceItem(Container, serviceType, child, PlugIn);
             if (IsSystem) //生成服务与当前服务(依赖服务)属性必须一致
             {
                 item.MakeSystem();
@@ -229,6 +236,6 @@ namespace blqw.IOC
                 }
             }
         }
-        
+
     }
 }
