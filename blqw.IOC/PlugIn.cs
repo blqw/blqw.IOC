@@ -244,5 +244,6 @@ namespace blqw.IOC
         /// <param name="other"></param>
         /// <returns></returns>
         public int CompareTo(PlugIn other) => other == null ? 1 : this.Priority.CompareTo(other.Priority);
+
     }
 }

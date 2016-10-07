@@ -95,6 +95,11 @@ static void Main(string[] args)
 --------
 
 ## 更新日志
+#### [1.3.3] 2016.10.07
+* 新增一组方法用于获取匹配的插件 `PlugInContainer.GetPlugIns`
+* 新增`SimpleTraceListener`侦听器基类
+* 新增`ServiceContainer`的日志记录
+
 #### [1.3.2] 2016.10.05
 * 优化`ServiceContainer`可以根据优先级过滤插件
 

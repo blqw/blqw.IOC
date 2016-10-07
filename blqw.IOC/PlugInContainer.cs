@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
 using System.ComponentModel.Composition.Primitives;
 using System.Diagnostics;
@@ -28,24 +30,16 @@ namespace blqw.IOC
         /// 异常集合
         /// </summary>
         private readonly List<Exception> _exceptions;
-
-        /// <summary>
-        /// 初始化插件容器
-        /// </summary>
-        public PlugInContainer()
-        {
-            _cataLog = new AggregateCatalog();
-            _container = new CompositionContainer(_cataLog);
-            _exceptions = new List<Exception>();
-        }
-
+        
         /// <summary>
         /// 初始化插件容器
         /// </summary>
         /// <param name="catalog"> 插件目录 </param>
         public PlugInContainer(ComposablePartCatalog catalog)
-            : this()
         {
+            _cataLog = new AggregateCatalog();
+            _container = new CompositionContainer(_cataLog);
+            _exceptions = new List<Exception>();
             AddCatalog(catalog);
         }
 
@@ -99,71 +93,78 @@ namespace blqw.IOC
         }
 
         /// <summary>
+        /// 获取导出插件
+        /// </summary>
+        /// <param name="name">插件约定名称</param>
+        /// <param name="type">插件约定类型</param>
+        /// <param name="exactType">是否精确匹配类型 </param>
+        /// <returns></returns>
+        public IEnumerable<PlugIn> GetPlugIns(string name, Type type,bool exactType = true)
+        {
+            if (type == null)
+            {
+                type = typeof(object);
+            }
+            if (string.IsNullOrEmpty(name) && (type == typeof(object)))
+            {
+                throw new ArgumentNullException($"{nameof(name)} and {nameof(type)}");
+            }
+            var query = MEF.PlugIns.AsQueryable();
+            if (string.IsNullOrEmpty(name) == false)
+            {
+                query = query.Where(p => p.Name == name);
+            }
+            if (type != typeof(object))
+            {
+                if (exactType)
+                {
+                    var id = AttributedModelServices.GetTypeIdentity(type);
+                    query = query.Where(p => p.TypeIdentity == id);
+                }
+                else
+                {
+                    query = query.Where(p => p.IsTrueOf(type));
+                }
+            }
+            return query.OrderByDescending(p => p.Priority);
+        }
+
+        /// <summary>
+        /// 获取导出插件
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public IEnumerable<PlugIn> GetPlugIns(string name)
+        {
+            if (name == null)
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
+            return GetPlugIns(name, null);
+        }
+
+        /// <summary>
+        /// 获取导出插件
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public IEnumerable<PlugIn> GetPlugIns(Type type)
+        {
+            if (type == null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
+            return GetPlugIns(null, type);
+        }
+
+        /// <summary>
         /// 获取插件导出项
         /// </summary>
         /// <param name="name"> 插件名称 </param>
         /// <param name="type"> 插件类型 </param>
         /// <returns> </returns>
-        /// <exception cref="ArgumentException">
-        /// 当 <paramref name="name" /> 为null时,<paramref name="type" /> 不能是
-        /// <seealso cref="object" />
-        /// </exception>
-        public IEnumerable<object> GetExports(string name, Type type)
-        {
-            if ((type == null))
-            {
-                type = typeof(object);
-            }
-            if ((name == null) && (type == typeof(object)))
-            {
-                throw new ArgumentException($"当{nameof(name)}为null时,{nameof(type)}不能是 System.Object");
-            }
-            if (type == typeof(object))
-            {
-                foreach (PlugIn plugin in Components)
-                {
-                    if (name == plugin.Name)
-                    {
-                        var value = plugin.GetValue(type);
-                        if (value != null)
-                        {
-                            yield return value;
-                        }
-                    }
-                }
-                yield break;
-            }
-            //foreach (var export in _container.GetExports(type, null, name))
-            //{
-            //    var handler = export.Value as ExportedDelegate;
-            //    if (handler != null)
-            //    {
-            //        var func = handler.CreateDelegate(type);
-            //        if (func != null)
-            //        {
-            //            yield return func;
-            //        }
-            //    }
-            //    else
-            //    {
-            //        yield return export.Value;
-            //    }
-            //}
-            foreach (PlugIn plugin in Components)
-            {
-                if (plugin.IsCustom == false)
-                {
-                    if ((name == null) || (name == plugin.Name))
-                    {
-                        var value = plugin.GetValue(type);
-                        if (value != null)
-                        {
-                            yield return value;
-                        }
-                    }
-                }
-            }
-        }
+        public IEnumerable<object> GetExports(string name, Type type) => GetPlugIns(name, type).Select(it => it.GetValue(type)).Where(it => it != null);
+        
 
         /// <summary>
         /// 获取插件导出项
@@ -171,14 +172,7 @@ namespace blqw.IOC
         /// <param name="name"> 插件名称 </param>
         /// <returns> </returns>
         /// <exception cref="ArgumentNullException"> <paramref name="name" /> is <see langword="null" />. </exception>
-        public IEnumerable<object> GetExports(string name)
-        {
-            if (name == null)
-            {
-                throw new ArgumentNullException(nameof(name));
-            }
-            return GetExports(name, null);
-        }
+        public IEnumerable<object> GetExports(string name) => GetPlugIns(name, null).Select(it => it.GetValue(null)).Where(it => it != null);
 
         /// <summary>
         /// 获取插件导出项
@@ -186,14 +180,7 @@ namespace blqw.IOC
         /// <param name="type"> 插件类型 </param>
         /// <returns> </returns>
         /// <exception cref="ArgumentNullException"> <paramref name="type" /> is <see langword="null" />. </exception>
-        public IEnumerable<object> GetExports(Type type)
-        {
-            if (type == null)
-            {
-                throw new ArgumentNullException(nameof(type));
-            }
-            return GetExports(null, type);
-        }
+        public IEnumerable<object> GetExports(Type type) => GetPlugIns(null, type).Select(it => it.GetValue(type)).Where(it => it != null);
 
         /// <summary>
         /// 获取插件导出项

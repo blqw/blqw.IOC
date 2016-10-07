@@ -51,6 +51,7 @@
     <Compile Include="DefalutComponent.cs" />
     <Compile Include="Logger\LoggerSource.cs" />
     <Compile Include="Logger\LogServices.cs" />
+    <Compile Include="Logger\SimpleTraceListener.cs" />
     <Compile Include="Logger\TraceSourceExtensions.cs" />
     <Compile Include="MEF.cs" />
     <Compile Include="PlatformServices.cs" />

@@ -226,9 +226,7 @@ namespace blqw.IOC
             {
                 throw new ArgumentNullException(nameof(item));
             }
-            foreach (
-                var field in
-                typeof(ServiceItem).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            foreach (var field in typeof(ServiceItem).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
             {
                 if (field.IsLiteral == false)
                 {
@@ -237,5 +235,11 @@ namespace blqw.IOC
             }
         }
 
+        /// <summary>
+        /// 返回表示当前对象的字符串。
+        /// </summary>
+        /// <returns>表示当前对象的字符串。</returns>
+        public override string ToString()
+            => $"ServiceType = {ServiceType}, IsSystem = {IsSystem}, AutoUpdate = {AutoUpdate}, _value = {_value.GetType()}";
     }
 }

@@ -94,7 +94,7 @@ namespace blqw.IOC
         }
 
         /// <summary>
-        /// 同步 <seealso cref="Trace.Listeners" /> 和 <seealso cref="LoggerSource.Listeners" /> 中的对象
+        /// 同步 <seealso cref="Trace.Listeners" /> 和 <seealso cref="TraceSourceBase.Listeners" /> 中的对象
         /// 如果无法同步,则进行复制
         /// </summary>
         private static void SyncTraceListeners(TraceSource source)
