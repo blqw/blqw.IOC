@@ -14,6 +14,8 @@
     <releaseNotes>
       [1.3.5] 2016.10.07
       * 优化插件对优先级的处理
+      [1.3.6] 2016.10.12
+      * 优化日志拓展方法,当`message`参数为空时,不再抛出异常
     </releaseNotes>
     <copyright>Copyright 2016</copyright>
     <tags>MEF IOC PlugIn blqw</tags>
