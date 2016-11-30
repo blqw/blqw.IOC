@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.Linq;
 
 namespace blqw.IOC
@@ -17,36 +18,27 @@ namespace blqw.IOC
         /// </summary>
         private readonly ConcurrentDictionary<Type, ServiceItem> _items;
 
+        private TraceSource _logger;
+
         /// <summary>
         /// 初始化服务容器
         /// </summary>
         /// <param name="serviceName"> 服务约定名称 </param>
         /// <param name="serviceType"> 服务约定基类或接口类型 </param>
         /// <param name="typeComparer"> 比较2个类型服务的优先级 </param>
+        /// <param name="logger"> 日志记录器 </param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="serviceName" /> and <paramref name="serviceType" /> is all
         /// <see langword="null" />.
         /// </exception>
         /// <exception cref="OverflowException"> 匹配插件数量超过字典的最大容量 (<see cref="F:System.Int32.MaxValue" />)。 </exception>
-        protected ServiceContainer(string serviceName, Type serviceType, IComparer<Type> typeComparer)
+        protected ServiceContainer(string serviceName, Type serviceType, IComparer<Type> typeComparer, TraceSource logger = null)
         {
             TypeComparer = typeComparer;
-            if (string.IsNullOrEmpty(serviceName) && (serviceType == null))
-            {
-                throw new ArgumentNullException($"{nameof(serviceName)} and {nameof(serviceType)}");
-            }
-            var query = MEF.PlugIns.AsQueryable();
-            if (string.IsNullOrEmpty(serviceName) == false)
-            {
-                query = query.Where(p => p.Name == serviceName);
-            }
-            if (serviceType != null)
-            {
-                var id = AttributedModelServices.GetTypeIdentity(serviceType);
-                query = query.Where(p => p.TypeIdentity == id);
-            }
+            _logger = logger ?? LogServices.Logger;
             _items = new ConcurrentDictionary<Type, ServiceItem>();
-            foreach (var p in query)
+            _logger?.Write(TraceEventType.Start, $"开始扫描服务插件 serviceName={serviceName},serviceType={serviceType}");
+            foreach (var p in MEF.PlugIns.GetPlugIns(serviceName, serviceType).OrderByDescending(p => p.Priority))
             {
                 var value = p.GetValue(serviceType);
                 if (value == null)
@@ -58,10 +50,18 @@ namespace blqw.IOC
                 {
                     continue;
                 }
-                var item = new ServiceItem(this, type, value);
+                var item = new ServiceItem(this, type, value, p);
                 item.MakeSystem(); //默认为系统插件
-                _items.TryAdd(type, item);
+                if (_items.TryAdd(type, item) == false)
+                {
+                    _logger?.Write(TraceEventType.Verbose, $"服务插件({value.GetType().FullName})因优先级({p.Priority})过低被抛弃");
+                }
+                else
+                {
+                    _logger?.Write(TraceEventType.Verbose, $"服务插件({value.GetType().FullName}),优先级({p.Priority})装载完成");
+                }
             }
+            _logger?.Write(TraceEventType.Stop, $"服务插件装载完成,有效服务 {Count} 个");
         }
 
         /// <summary>
@@ -95,7 +95,7 @@ namespace blqw.IOC
         /// <returns></returns>
         /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
         /// <exception cref="OverflowException"> 字典中已包含元素的最大数目 (<see cref="F:System.Int32.MaxValue" />)。 </exception>
-        public ServiceItem GetServiceItem(Type serviceType)
+        public virtual ServiceItem GetServiceItem(Type serviceType)
         {
             if (serviceType == null)
             {
@@ -111,9 +111,11 @@ namespace blqw.IOC
             {
                 if (item.AutoUpdate)
                 {
+                    _logger?.Write(TraceEventType.Start, $"服务更新: {item}");
                     item.AutoUpdate = false; //防止死循环
                     var newItem = CreateServiceItem(serviceType);
                     newItem.CopyTo(item);
+                    _logger?.Write(TraceEventType.Stop, $"服务更新完成: {item}");
                 }
             }
             return item;
@@ -127,7 +129,7 @@ namespace blqw.IOC
         /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
         /// <exception cref="ArgumentNullException"> <paramref name="serviceInstance" /> is <see langword="null" />. </exception>
         /// <exception cref="OverflowException"> 字典中已包含元素的最大数目 (<see cref="int.MaxValue" />)。 </exception>
-        public void AddService(Type serviceType, object serviceInstance)
+        public virtual void AddService(Type serviceType, object serviceInstance)
         {
             if (serviceType == null)
             {
@@ -137,8 +139,9 @@ namespace blqw.IOC
             {
                 throw new ArgumentNullException(nameof(serviceInstance));
             }
+            _logger?.Write(TraceEventType.Verbose, $"添加自定义服务: serviceType={serviceType},value={serviceInstance}");
             _items.AddOrUpdate(serviceType
-                , k => new ServiceItem(this, serviceType, serviceInstance)
+                , k => new ServiceItem(this, serviceType, serviceInstance, null)
                 , (k, v) =>
                 {
                     v.AutoUpdate = false;
@@ -188,7 +191,7 @@ namespace blqw.IOC
         /// <param name="serviceType"> 要移除的服务类型。 </param>
         /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
         /// <exception cref="NotSupportedException"> 无法删除系统服务组件 </exception>
-        public void RemoveService(Type serviceType)
+        public virtual void RemoveService(Type serviceType)
         {
             if (serviceType == null)
             {
@@ -203,6 +206,7 @@ namespace blqw.IOC
             {
                 throw new NotSupportedException("无法删除系统服务组件");
             }
+            _logger?.Write(TraceEventType.Verbose, $"移除服务: serviceType={serviceType},value={item.Value}");
             item.AutoUpdate = true; //服务被删除后需要设置为自动更新,不然该服务会无法正常运行
             item.Value = null;
         }
@@ -222,7 +226,7 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="serviceType"> 服务组件类型 </param>
         /// <returns> </returns>
-        private ServiceItem CreateServiceItem(Type serviceType)
+        protected virtual ServiceItem CreateServiceItem(Type serviceType)
         {
             var ee = Match(serviceType);
             while (ee.MoveNext())
@@ -234,17 +238,20 @@ namespace blqw.IOC
                 }
                 else if (ReferenceEquals(item, ee.Current))
                 {
+                    _logger?.Write(TraceEventType.Verbose, $"创建服务: {item}");
                     return item;
                 }
                 var container = item.Value as IServiceContainer;
                 if (container == null)
                 {
+                    _logger?.Write(TraceEventType.Verbose, $"创建服务: {item}");
                     return item;
                 }
                 while (ee.MoveNext())
                 {
                     container.AddService(item.ServiceType, item, false);
                 }
+                _logger?.Write(TraceEventType.Verbose, $"创建服务: {item}");
                 return item;
             }
             return GetServiceItem(typeof(object));
@@ -255,7 +262,7 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="serviceType"> </param>
         /// <returns> </returns>
-        private IEnumerator<ServiceItem> Match(Type serviceType)
+        protected virtual IEnumerator<ServiceItem> Match(Type serviceType)
         {
             ServiceItem item;
 
@@ -322,7 +329,7 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="genericType"> 用于匹配的 <see cref="Type" /> </param>
         /// <returns> </returns>
-        private ServiceItem MatchGeneric(Type genericType)
+        protected virtual ServiceItem MatchGeneric(Type genericType)
         {
             if (genericType.IsGenericType && (genericType.IsGenericTypeDefinition == false))
             {

@@ -18,8 +18,24 @@ namespace blqw.IOC
         {
             Console.WriteLine(Components.Encryption(""));
             Console.WriteLine(Components.Encryption("aaaa"));
+
+
+            Func<string, string> encode = MEF.PlugIns.GetExport<Func<string, string>>("加密");
+            Console.WriteLine(encode("aaaa"));
+
         }
     }
+
+
+    [Export("加密器")]
+    class MD5 : ICustomFormatter
+    {
+        public string Format(string format, object arg, IFormatProvider formatProvider)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
 
     public class MyClass2
     {

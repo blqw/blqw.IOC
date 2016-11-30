@@ -1,9 +1,9 @@
 ﻿# 基于微软MEF组件的插件管理组件
 
-## 插件式解耦
-组件与组件之间依赖插件协议而不是具体实现或具体接口
+## MEF
+基于微软MEF,实现代码间依赖**协议**而不是**具体实现**或**指定接口**
 
-* #### 定义导出功能
+## MEF功能导出
 ```csharp
 public class MyClass
 {
@@ -19,7 +19,7 @@ public class MyClass
 }
 ```
 
-* #### 功能导入
+## MEF功能导入
 ```csharp
 static class Components
 {
@@ -33,8 +33,6 @@ static class Components
 
 }
 ```
-
-* #### 使用插件
 ```csharp
 static void Main(string[] args)
 {
@@ -43,7 +41,7 @@ static void Main(string[] args)
 }
 ```
 
-* #### 替换原有功能
+## MEF功能替换 
 ```csharp
 public class MyClass2
 {
@@ -55,32 +53,7 @@ public class MyClass2
         {
             return Guid.Empty.ToString("n");
         }
-        return ToMD5_Fast(str).ToString("n");
-    }
-
-    /// <summary> 使用MD5加密
-    /// </summary>
-    /// <param name="input">加密字符串</param>
-    /// <remarks>周子鉴 2015.08.26</remarks>
-    public static Guid ToMD5_Fast(string input)
-    {
-        using (var md5Provider = new MD5CryptoServiceProvider())
-        {
-            var bytes = Encoding.UTF8.GetBytes(input);
-            var hash = md5Provider.ComputeHash(bytes);
-            Swap(hash, 0, 3);   //交换0,3的值
-            Swap(hash, 1, 2);   //交换1,2的值
-            Swap(hash, 4, 5);   //交换4,5的值
-            Swap(hash, 6, 7);   //交换6,7的值
-            return new Guid(hash);
-        }
-    }
-
-    private static void Swap(byte[] arr, int a, int b)
-    {
-        var temp = arr[a];
-        arr[a] = arr[b];
-        arr[b] = temp;
+        return Convert3.ToMD5(str);
     }
 }
 ```
@@ -91,11 +64,40 @@ static void Main(string[] args)
     Console.WriteLine(Components.Encryption("aaaa"));  //74b87337454200d4d33f80c4663dc5e5
 }
 ```
+## 插件管理
+无需定义,直接获取并使用
+```csharp
+static void Main(string[] args)
+{
+    Func<string,string> encode = MEF.PlugIns.GetExport<Func<string, string>>("加密");
+    Console.WriteLine(encode("aaaa"));  //74b87337454200d4d33f80c4663dc5e5
+}
+```
+## MEF类型导出
 
---------
-
+---
 ## 更新日志
-#### [v.1.3.0] 2016.09.23
+#### [1.3.7] 2016.11.30
+* 开放`ServiceContainer`类中多个方法的重写
+
+#### [1.3.6] 2016.10.12
+* 优化日志拓展方法,当`message`参数为空时,不再抛出异常
+
+#### [1.3.5] 2016.10.07
+* 优化插件对优先级的处理
+
+#### [1.3.4] 2016.10.07
+* 修复bug
+
+#### [1.3.3] 2016.10.07
+* 新增一组方法用于获取匹配的插件 `PlugInContainer.GetPlugIns`
+* 新增`SimpleTraceListener`侦听器基类
+* 新增`ServiceContainer`的日志记录
+
+#### [1.3.2] 2016.10.05
+* 优化`ServiceContainer`可以根据优先级过滤插件
+
+#### [1.3.0] 2016.09.23
 * 修复部分bug
 * 优化日志
 

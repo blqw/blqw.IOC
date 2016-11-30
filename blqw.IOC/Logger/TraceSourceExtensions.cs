@@ -15,7 +15,7 @@ namespace blqw.IOC
         {
             DebuggerIfAttached(Trace.Listeners);
         }
-
+        
         /// <summary>
         /// 记录日志
         /// </summary>
@@ -26,27 +26,17 @@ namespace blqw.IOC
         /// <param name="line"> 行号 </param>
         /// <param name="member"> 调用方法或属性 </param>
         /// <param name="file"> 文件名 </param>
-        /// <exception cref="ArgumentNullException"> <paramref name="message" /> 为 null 。 </exception>
-        /// <exception cref="ArgumentException"> <paramref name="message" /> 为空字符串 ("")或连续的空白。 </exception>
         /// <exception cref="ObjectDisposedException"> 终止期间尝试跟踪事件。 </exception>
         public static void Write(this TraceSource source, TraceEventType eventType, string message, Exception ex = null,
             [CallerLineNumber] int line = 0, [CallerMemberName] string member = "", [CallerFilePath] string file = "")
         {
-            if (message == null)
-            {
-                throw new ArgumentNullException(nameof(message));
-            }
-            if (string.IsNullOrWhiteSpace(message))
-            {
-                throw new ArgumentException($"{nameof(message)}为空字符串 (\"\")或连续的空白。", nameof(message));
-            }
             if (ex == null)
             {
-                source.TraceData(eventType, 0, message);
+                source.TraceData(eventType, 0, message ?? "");
             }
             else
             {
-                source.TraceData(eventType, 0, message, $"{file}:{line},{member}", ex.ToString());
+                source.TraceData(eventType, 0, message ?? "", $"{file}:{line},{member}", ex.ToString());
             }
         }
 
@@ -60,29 +50,17 @@ namespace blqw.IOC
         /// <param name="line"> 行号 </param>
         /// <param name="member"> 调用方法或属性 </param>
         /// <param name="file"> 文件名 </param>
-        /// <exception cref="ArgumentNullException"> <paramref name="getMessage" /> 为 null。 </exception>
-        /// <exception cref="ArgumentException"> <paramref name="getMessage" /> 返回值为null或连续的空白。 </exception>
         /// <exception cref="Exception"> <paramref name="getMessage" /> 执行出现异常。 </exception>
         /// <exception cref="ObjectDisposedException"> 终止期间尝试跟踪事件。 </exception>
         public static void Write(this TraceSource source, TraceEventType eventType, Func<string> getMessage, Exception ex = null,
             [CallerLineNumber] int line = 0, [CallerMemberName] string member = "", [CallerFilePath] string file = "")
         {
-            if (getMessage == null)
-            {
-                throw new ArgumentNullException(nameof(getMessage));
-            }
-
             if (source.Switch.ShouldTrace(eventType) == false)
             {
                 return;
             }
 
-            var message = getMessage();
-            if (string.IsNullOrWhiteSpace(message))
-            {
-                throw new ArgumentException($"{nameof(getMessage)}返回值为null或连续的空白。", nameof(getMessage));
-            }
-
+            var message = getMessage?.Invoke() ?? "";
             if (ex == null)
             {
                 source.TraceData(eventType, 0, message);
@@ -94,7 +72,7 @@ namespace blqw.IOC
         }
 
         /// <summary>
-        /// 同步 <seealso cref="Trace.Listeners" /> 和 <seealso cref="LoggerSource.Listeners" /> 中的对象
+        /// 同步 <seealso cref="Trace.Listeners" /> 和 <seealso cref="TraceSourceBase.Listeners" /> 中的对象
         /// 如果无法同步,则进行复制
         /// </summary>
         private static void SyncTraceListeners(TraceSource source)
@@ -158,6 +136,7 @@ namespace blqw.IOC
         {
             SyncTraceListeners(source);
             DebuggerIfAttached(source.Listeners);
+            source.Switch?.ShouldTrace(TraceEventType.Critical);
             return source;
         }
     }

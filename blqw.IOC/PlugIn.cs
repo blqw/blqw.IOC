@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
@@ -30,8 +32,15 @@ namespace blqw.IOC
             if (definition == null) throw new ArgumentNullException(nameof(definition));
 
             Name = definition.ContractName;
-            Metadata = definition.Metadata;
+            Metadata = new Dictionary<string, object>(definition.Metadata, StringComparer.OrdinalIgnoreCase);
             InnerValue = part.GetExportedValue(definition);
+
+            foreach (var attr in InnerValue.GetType().GetCustomAttributes<ExportMetadataAttribute>())
+            {
+                Metadata[attr.Name] = attr.Value;
+            }
+            Metadata = new ReadOnlyDictionary<string, object>(Metadata);
+
             Priority = GetMetadata("Priority", 0);
             TypeIdentity = GetMetadata<string>("ExportTypeIdentity", null);
             IsMethod = InnerValue is ExportedDelegate;
@@ -244,5 +253,6 @@ namespace blqw.IOC
         /// <param name="other"></param>
         /// <returns></returns>
         public int CompareTo(PlugIn other) => other == null ? 1 : this.Priority.CompareTo(other.Priority);
+
     }
 }
