@@ -95,7 +95,7 @@ namespace blqw.IOC
         /// <returns></returns>
         /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
         /// <exception cref="OverflowException"> 字典中已包含元素的最大数目 (<see cref="F:System.Int32.MaxValue" />)。 </exception>
-        public ServiceItem GetServiceItem(Type serviceType)
+        public virtual ServiceItem GetServiceItem(Type serviceType)
         {
             if (serviceType == null)
             {
@@ -129,7 +129,7 @@ namespace blqw.IOC
         /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
         /// <exception cref="ArgumentNullException"> <paramref name="serviceInstance" /> is <see langword="null" />. </exception>
         /// <exception cref="OverflowException"> 字典中已包含元素的最大数目 (<see cref="int.MaxValue" />)。 </exception>
-        public void AddService(Type serviceType, object serviceInstance)
+        public virtual void AddService(Type serviceType, object serviceInstance)
         {
             if (serviceType == null)
             {
@@ -191,7 +191,7 @@ namespace blqw.IOC
         /// <param name="serviceType"> 要移除的服务类型。 </param>
         /// <exception cref="ArgumentNullException"> <paramref name="serviceType" /> is <see langword="null" />. </exception>
         /// <exception cref="NotSupportedException"> 无法删除系统服务组件 </exception>
-        public void RemoveService(Type serviceType)
+        public virtual void RemoveService(Type serviceType)
         {
             if (serviceType == null)
             {
@@ -226,7 +226,7 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="serviceType"> 服务组件类型 </param>
         /// <returns> </returns>
-        private ServiceItem CreateServiceItem(Type serviceType)
+        protected virtual ServiceItem CreateServiceItem(Type serviceType)
         {
             var ee = Match(serviceType);
             while (ee.MoveNext())
@@ -262,7 +262,7 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="serviceType"> </param>
         /// <returns> </returns>
-        private IEnumerator<ServiceItem> Match(Type serviceType)
+        protected virtual IEnumerator<ServiceItem> Match(Type serviceType)
         {
             ServiceItem item;
 
@@ -329,7 +329,7 @@ namespace blqw.IOC
         /// </summary>
         /// <param name="genericType"> 用于匹配的 <see cref="Type" /> </param>
         /// <returns> </returns>
-        private ServiceItem MatchGeneric(Type genericType)
+        protected virtual ServiceItem MatchGeneric(Type genericType)
         {
             if (genericType.IsGenericType && (genericType.IsGenericTypeDefinition == false))
             {

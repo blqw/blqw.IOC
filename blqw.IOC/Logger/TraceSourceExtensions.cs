@@ -136,6 +136,7 @@ namespace blqw.IOC
         {
             SyncTraceListeners(source);
             DebuggerIfAttached(source.Listeners);
+            source.Switch?.ShouldTrace(TraceEventType.Critical);
             return source;
         }
     }
