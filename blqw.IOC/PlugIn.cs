@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
 using System.ComponentModel.Composition.Primitives;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -16,6 +17,7 @@ namespace blqw.IOC
     /// <summary>
     /// 插件
     /// </summary>
+    [DebuggerDisplay("{DebugInfo}")]
     public sealed class PlugIn : Component, IComparable<PlugIn>
     {
         /// <summary>
@@ -254,5 +256,8 @@ namespace blqw.IOC
         /// <returns></returns>
         public int CompareTo(PlugIn other) => other == null ? 1 : this.Priority.CompareTo(other.Priority);
 
+        private string DebugInfo => $"{TypeIdentity}, Name={Name}, IsCustom={IsCustom}, IsMethod={IsMethod}, Priority={Priority}, InnerValue={InnerValue}";
+
+        public bool Invalid => (Type?.Assembly?.ManifestModule?.Name ?? "<未知>") ==  "<未知>";
     }
 }

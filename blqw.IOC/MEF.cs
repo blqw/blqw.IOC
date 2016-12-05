@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
 using System.ComponentModel.Composition.Primitives;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -38,21 +40,29 @@ namespace blqw.IOC
         /// <remarks> 这里不使用直接属性赋值,是因为在某些情况下会出现未知的问题 </remarks>
         static MEF()
         {
+            ReInitialization();
+        }
+
+
+        public static void ReInitialization()
+        {
             LogServices.Logger?.Write(TraceEventType.Start, "开始初始化MEF");
             var sw = Stopwatch.StartNew();
-            Container = GetContainer();
+            var container = GetContainer();
             sw.Stop();
             var time = sw.Elapsed.TotalMilliseconds;
             LogServices.Logger?.Write(TraceEventType.Verbose,
                 () => "===插件列表===" + Environment.NewLine + string.Join(Environment.NewLine, Container.Catalog.Parts) +
                       Environment.NewLine + $"=== 共{Container.Catalog.Count()}个 ===");
             LogServices.Logger?.Write(TraceEventType.Stop, () => $"MEF初始化完成, 耗时 {time} ms");
+            Container = container;
+            _plugIns = null;
         }
 
         /// <summary>
         /// 插件容器
         /// </summary>
-        public static CompositionContainer Container { get; }
+        public static CompositionContainer Container { get; private set; }
 
         /// <summary>
         /// 尝试添加程序集到哈希表,添加成功返回true,如果程序集已经存在或<paramref name="loaded" />为null,或<paramref name="assembly" />为null,则返回 false,
@@ -82,7 +92,7 @@ namespace blqw.IOC
         /// <returns> </returns>
         private static CompositionContainer GetContainer()
         {
-            var dir = new DirectoryCatalog(".").FullPath;
+            var dir = AppDomain.CurrentDomain.RelativeSearchPath;
             var files = new HashSet<string>(
                 Directory.EnumerateFiles(dir, "*.dll", SearchOption.AllDirectories)
                     .Union(Directory.EnumerateFiles(dir, "*.exe", SearchOption.AllDirectories))
@@ -92,37 +102,45 @@ namespace blqw.IOC
             var loaded = new HashSet<string>();
             foreach (var a in assemblies)
             {
-                if (loaded.TryAdd(a) && a.CanLoad())
+                if (a.CanLoad() && loaded.TryAdd(a))
                 {
                     a.LoadTypes()?.ForEach(catalogs.Catalogs.Add);
                 }
                 if (a.IsDynamic == false)
                 {
+                    Uri filePath;
+                    if (Uri.TryCreate(a.EscapedCodeBase, UriKind.Absolute, out filePath) && filePath.IsLoopback)
+                    {
+                        files.Remove(filePath.LocalPath);
+                    }
                     files.Remove(a.Location);
                 }
             }
 
             LogServices.Logger?.Write(TraceEventType.Start, $"扫描动态文件 -> 文件个数:{files.Count}");
-            var domain = AppDomain.CreateDomain("mef");
-            LogServices.Logger?.Write(TraceEventType.Start, "新建临时程序域");
-            foreach (var file in files)
+            if (files.Count > 0)
             {
-                try
+                var domain = AppDomain.CreateDomain("mef");
+                LogServices.Logger?.Write(TraceEventType.Start, "新建临时程序域");
+                foreach (var file in files)
                 {
-                    var bytes = File.ReadAllBytes(file);
-                    var ass = domain.Load(bytes);
-                    if (loaded.TryAdd(ass) && ass.CanLoad())
+                    try
                     {
-                        Assembly.Load(bytes).LoadTypes()?.ForEach(catalogs.Catalogs.Add);
+                        var bytes = File.ReadAllBytes(file);
+                        var ass = domain.Load(bytes);
+                        if (loaded.TryAdd(ass) && ass.CanLoad())
+                        {
+                            Assembly.Load(bytes).LoadTypes()?.ForEach(catalogs.Catalogs.Add);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogServices.Logger?.Write(TraceEventType.Error, $"文件加载失败{file}", ex);
                     }
                 }
-                catch (Exception ex)
-                {
-                    LogServices.Logger?.Write(TraceEventType.Error, $"文件加载失败{file}", ex);
-                }
+                LogServices.Logger?.Write(TraceEventType.Stop, "卸载程序域");
+                AppDomain.Unload(domain);
             }
-            LogServices.Logger?.Write(TraceEventType.Stop, "卸载程序域");
-            AppDomain.Unload(domain);
             LogServices.Logger?.Write(TraceEventType.Stop, "文件处理完成");
             return new SelectionPriorityContainer(catalogs);
         }
@@ -135,9 +153,10 @@ namespace blqw.IOC
         private static bool CanLoad(this Assembly assembly)
         {
             return (assembly.IsDynamic == false)
-                   && (assembly.GlobalAssemblyCache == false)
-                   && (assembly.FullName.StartsWith("System.", StringComparison.OrdinalIgnoreCase) == false)
-                   && (assembly.FullName.StartsWith("Microsoft.", StringComparison.OrdinalIgnoreCase) == false);
+                    && (assembly.ManifestModule.Name != "<未知>")
+                    && (assembly.GlobalAssemblyCache == false)
+                    && (assembly.FullName.StartsWith("System.", StringComparison.OrdinalIgnoreCase) == false)
+                    && (assembly.FullName.StartsWith("Microsoft.", StringComparison.OrdinalIgnoreCase) == false);
         }
 
         /// <summary>
@@ -456,7 +475,7 @@ namespace blqw.IOC
             {
                 if (import.MemberType.IsArray || import.MemberType.IsInterface)
                 {
-                    var list = (IList) Activator.CreateInstance(typeof(List<>).MakeGenericType(import.ExportedType));
+                    var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(import.ExportedType));
                     foreach (var export in exports)
                     {
                         var value = ConvertExportedValue(() => export.Value, import.ExportedType);
@@ -587,13 +606,27 @@ namespace blqw.IOC
 
         #region 拓展功能
 
-        private static PlugInContainer _PlugIns;
+        private static PlugInContainer _plugIns;
 
         /// <summary>
         /// 插件容器
         /// </summary>
         public static PlugInContainer PlugIns
-            => _PlugIns ?? (_PlugIns = Container == null ? null : new PlugInContainer(Container.Catalog));
+        {
+            get
+            {
+                if (_plugIns == null)
+                {
+                    return _plugIns = new PlugInContainer(Container.Catalog);
+                }
+                else if(_plugIns.Any(it=>it.Invalid)) //如果存在无效插件,则重载MEF
+                {
+                    ReInitialization();
+                    return _plugIns = new PlugInContainer(Container.Catalog);
+                }
+                return _plugIns;
+            }
+        }
 
         #endregion
     }

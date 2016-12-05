@@ -77,6 +77,10 @@ static void Main(string[] args)
 
 ---
 ## 更新日志
+#### [1.3.8] 2016.12.05
+* 提供`MEF.ReInitiation`方法，手动重载插件
+* 当插件中出现无效插件时，自动重新载入所有插件
+
 #### [1.3.7] 2016.11.30
 * 开放`ServiceContainer`类中多个方法的重写
 
