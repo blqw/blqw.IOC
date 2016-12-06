@@ -33,8 +33,8 @@ using System.Runtime.InteropServices;
 // 方法是按如下所示使用“*”: :
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion(VersionString.VERSION + ".*")]
-[assembly: AssemblyFileVersion(VersionString.VERSION + ".0")]
-[assembly: AssemblyInformationalVersion(VersionString.VERSION + ".0")]
+[assembly: AssemblyFileVersion(VersionString.VERSION + ".1")]
+[assembly: AssemblyInformationalVersion(VersionString.VERSION + ".1")]
 
 internal static class VersionString
 {

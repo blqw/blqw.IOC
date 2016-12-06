@@ -92,7 +92,7 @@ namespace blqw.IOC
         /// <returns> </returns>
         private static CompositionContainer GetContainer()
         {
-            var dir = AppDomain.CurrentDomain.RelativeSearchPath;
+            var dir = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory ?? new DirectoryCatalog(".").FullPath;
             var files = new HashSet<string>(
                 Directory.EnumerateFiles(dir, "*.dll", SearchOption.AllDirectories)
                     .Union(Directory.EnumerateFiles(dir, "*.exe", SearchOption.AllDirectories))
@@ -619,7 +619,7 @@ namespace blqw.IOC
                 {
                     return _plugIns = new PlugInContainer(Container.Catalog);
                 }
-                else if(_plugIns.Any(it=>it.Invalid)) //如果存在无效插件,则重载MEF
+                else if (_plugIns.Any(it => it.Invalid)) //如果存在无效插件,则重载MEF
                 {
                     ReInitialization();
                     return _plugIns = new PlugInContainer(Container.Catalog);
