@@ -33,10 +33,12 @@ using System.Runtime.InteropServices;
 // 方法是按如下所示使用“*”: :
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion(VersionString.VERSION + ".*")]
-[assembly: AssemblyFileVersion(VersionString.VERSION + ".1")]
-[assembly: AssemblyInformationalVersion(VersionString.VERSION + ".1")]
+[assembly: AssemblyFileVersion(VersionString.VERSION + VersionString.BUG_FIX)]
+[assembly: AssemblyInformationalVersion(VersionString.VERSION + VersionString.BUG_FIX + (VersionString.IsPreview ? "-beta" : ""))]
 
 internal static class VersionString
 {
     public const string VERSION = "1.3.8";
+    public const string BUG_FIX = ".2";
+    public const bool IsPreview = false;
 }

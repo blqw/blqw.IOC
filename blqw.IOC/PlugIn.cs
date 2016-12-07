@@ -49,6 +49,7 @@ namespace blqw.IOC
             if (IsMethod)
             {
                 InnerValue = typeof(ExportedDelegate).GetField("_method", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(InnerValue);
+                Type = InnerValue.GetType();
             }
             else if (InnerValue != null)
             {
@@ -258,6 +259,6 @@ namespace blqw.IOC
 
         private string DebugInfo => $"{TypeIdentity}, Name={Name}, IsCustom={IsCustom}, IsMethod={IsMethod}, Priority={Priority}, InnerValue={InnerValue}";
 
-        public bool Invalid => (Type?.Assembly?.ManifestModule?.Name ?? "<未知>") ==  "<未知>";
+        public bool Invalid => Type?.Assembly?.ManifestModule?.Name ==  "<未知>";
     }
 }

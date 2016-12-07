@@ -52,8 +52,8 @@ namespace blqw.IOC
             sw.Stop();
             var time = sw.Elapsed.TotalMilliseconds;
             LogServices.Logger?.Write(TraceEventType.Verbose,
-                () => "===插件列表===" + Environment.NewLine + string.Join(Environment.NewLine, Container.Catalog.Parts) +
-                      Environment.NewLine + $"=== 共{Container.Catalog.Count()}个 ===");
+                () => "===插件列表===" + Environment.NewLine + string.Join(Environment.NewLine, container.Catalog.Parts) +
+                      Environment.NewLine + $"=== 共{container.Catalog.Count()}个 ===");
             LogServices.Logger?.Write(TraceEventType.Stop, () => $"MEF初始化完成, 耗时 {time} ms");
             Container = container;
             _plugIns = null;
