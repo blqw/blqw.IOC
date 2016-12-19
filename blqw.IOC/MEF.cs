@@ -92,7 +92,11 @@ namespace blqw.IOC
         /// <returns> </returns>
         private static CompositionContainer GetContainer()
         {
-            var dir = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory ?? new DirectoryCatalog(".").FullPath;
+            var dir = AppDomain.CurrentDomain.BaseDirectory ?? new DirectoryCatalog(".").FullPath;
+            if (AppDomain.CurrentDomain.RelativeSearchPath?.StartsWith(dir, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                dir = AppDomain.CurrentDomain.RelativeSearchPath;
+            }
             var files = new HashSet<string>(
                 Directory.EnumerateFiles(dir, "*.dll", SearchOption.AllDirectories)
                     .Union(Directory.EnumerateFiles(dir, "*.exe", SearchOption.AllDirectories))
@@ -121,16 +125,20 @@ namespace blqw.IOC
             if (files.Count > 0)
             {
                 var domain = AppDomain.CreateDomain("mef");
+
                 LogServices.Logger?.Write(TraceEventType.Start, "新建临时程序域");
                 foreach (var file in files)
                 {
                     try
                     {
+
                         var bytes = File.ReadAllBytes(file);
                         var ass = domain.Load(bytes);
                         if (loaded.TryAdd(ass) && ass.CanLoad())
                         {
-                            Assembly.Load(bytes).LoadTypes()?.ForEach(catalogs.Catalogs.Add);
+                            var name = new AssemblyName(ass.FullName);
+                            Assembly.Load(name).LoadTypes()?.ForEach(catalogs.Catalogs.Add);
+                            //Assembly.Load(bytes).LoadTypes()?.ForEach(catalogs.Catalogs.Add);
                         }
                     }
                     catch (Exception ex)

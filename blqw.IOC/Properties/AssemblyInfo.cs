@@ -39,6 +39,6 @@ using System.Runtime.InteropServices;
 internal static class VersionString
 {
     public const string VERSION = "1.3.8";
-    public const string BUG_FIX = ".2";
+    public const string BUG_FIX = ".3";
     public const bool IsPreview = false;
 }
