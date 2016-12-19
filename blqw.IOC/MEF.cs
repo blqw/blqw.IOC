@@ -44,11 +44,30 @@ namespace blqw.IOC
         }
 
 
-        public static void ReInitialization()
+        public static void ReInitialization(string path = null)
         {
+            var setpath = System.Configuration.ConfigurationManager.AppSettings["mef.path"];
+            if (setpath != null)
+            {
+                path += "|" + setpath;
+            }
+            else if (Path.GetFileName(Process.GetCurrentProcess().MainModule?.FileName ?? Process.GetCurrentProcess().ProcessName)?.ToLowerInvariant() == "vstest.executionengine.x86.exe")
+            {
+                path += "|" + Environment.CurrentDirectory;
+            }
+            else
+            {
+                var dir = AppDomain.CurrentDomain.BaseDirectory ?? new DirectoryCatalog(".").FullPath;
+                if (AppDomain.CurrentDomain.RelativeSearchPath?.StartsWith(dir, StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    dir = AppDomain.CurrentDomain.RelativeSearchPath;
+                }
+                path += "|" + dir;
+            }
+
             LogServices.Logger?.Write(TraceEventType.Start, "开始初始化MEF");
             var sw = Stopwatch.StartNew();
-            var container = GetContainer();
+            var container = GetContainer(path);
             sw.Stop();
             var time = sw.Elapsed.TotalMilliseconds;
             LogServices.Logger?.Write(TraceEventType.Verbose,
@@ -85,22 +104,24 @@ namespace blqw.IOC
             return true;
         }
 
-
         /// <summary>
         /// 获取插件容器
         /// </summary>
         /// <returns> </returns>
-        private static CompositionContainer GetContainer()
+        private static CompositionContainer GetContainer(string paths)
         {
-            var dir = AppDomain.CurrentDomain.BaseDirectory ?? new DirectoryCatalog(".").FullPath;
-            if (AppDomain.CurrentDomain.RelativeSearchPath?.StartsWith(dir, StringComparison.OrdinalIgnoreCase) == true)
+            var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var path in paths.Split('|'))
             {
-                dir = AppDomain.CurrentDomain.RelativeSearchPath;
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    continue;
+                }
+                Directory.EnumerateFiles(path, "*.dll", SearchOption.AllDirectories).Select(files.Add).ToArray();
+                Directory.EnumerateFiles(path, "*.exe", SearchOption.AllDirectories).Select(files.Add).ToArray();
+                LogServices.Logger?.Write(TraceEventType.Verbose, $"扫描文件夹: {path}");
             }
-            var files = new HashSet<string>(
-                Directory.EnumerateFiles(dir, "*.dll", SearchOption.AllDirectories)
-                    .Union(Directory.EnumerateFiles(dir, "*.exe", SearchOption.AllDirectories))
-                , StringComparer.OrdinalIgnoreCase);
+
             var catalogs = new AggregateCatalog();
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             var loaded = new HashSet<string>();
