@@ -32,13 +32,13 @@ using System.Runtime.InteropServices;
 //可以指定所有这些值，也可以使用“生成号”和“修订号”的默认值，
 // 方法是按如下所示使用“*”: :
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion(VersionString.VERSION + ".*")]
+[assembly: AssemblyVersion(VersionString.VERSION + VersionString.BUG_FIX)]
 [assembly: AssemblyFileVersion(VersionString.VERSION + VersionString.BUG_FIX)]
 [assembly: AssemblyInformationalVersion(VersionString.VERSION + VersionString.BUG_FIX + (VersionString.IsPreview ? "-beta" : ""))]
 
 internal static class VersionString
 {
     public const string VERSION = "1.3.8";
-    public const string BUG_FIX = ".4";
+    public const string BUG_FIX = ".6";
     public const bool IsPreview = false;
 }
