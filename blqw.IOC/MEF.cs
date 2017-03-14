@@ -145,30 +145,38 @@ namespace blqw.IOC
             LogServices.Logger?.Write(TraceEventType.Start, $"扫描动态文件 -> 文件个数:{files.Count}");
             if (files.Count > 0)
             {
-                var domain = AppDomain.CreateDomain("mef");
-
-                LogServices.Logger?.Write(TraceEventType.Start, "新建临时程序域");
-                foreach (var file in files)
+                LogServices.Logger?.Write(TraceEventType.Suspend, "正在移除逻辑上下文");
+                var arc = CallContextEx.ArchiveAndClearLogicalData();
+                try
                 {
-                    try
+                    var domain = AppDomain.CreateDomain("mef");
+                    LogServices.Logger?.Write(TraceEventType.Start, "新建临时程序域");
+                    foreach (var file in files)
                     {
-
-                        var bytes = File.ReadAllBytes(file);
-                        var ass = domain.Load(bytes);
-                        if (loaded.TryAdd(ass) && ass.CanLoad())
+                        try
                         {
-                            var name = new AssemblyName(ass.FullName);
-                            Assembly.Load(name).LoadTypes()?.ForEach(catalogs.Catalogs.Add);
-                            //Assembly.Load(bytes).LoadTypes()?.ForEach(catalogs.Catalogs.Add);
+                            var bytes = File.ReadAllBytes(file);
+                            var ass = domain.Load(bytes);
+                            if (loaded.TryAdd(ass) && ass.CanLoad())
+                            {
+                                var name = new AssemblyName(ass.FullName);
+                                Assembly.Load(name).LoadTypes()?.ForEach(catalogs.Catalogs.Add);
+                                //Assembly.Load(bytes).LoadTypes()?.ForEach(catalogs.Catalogs.Add);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogServices.Logger?.Write(TraceEventType.Error, $"文件加载失败{file}", ex);
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        LogServices.Logger?.Write(TraceEventType.Error, $"文件加载失败{file}", ex);
-                    }
+                    LogServices.Logger?.Write(TraceEventType.Stop, "卸载程序域");
+                    AppDomain.Unload(domain);
                 }
-                LogServices.Logger?.Write(TraceEventType.Stop, "卸载程序域");
-                AppDomain.Unload(domain);
+                finally
+                {
+                    LogServices.Logger?.Write(TraceEventType.Resume, "正在恢复逻辑上下文");
+                    arc.Restore();
+                }
             }
             LogServices.Logger?.Write(TraceEventType.Stop, "文件处理完成");
             return new SelectionPriorityContainer(catalogs);

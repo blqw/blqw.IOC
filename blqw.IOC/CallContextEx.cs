@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 namespace blqw.IOC
 {
     /// <summary>
-    /// 对于系统类 <see cref="CallContext"/> 的功能拓展
+    /// 用于 <see cref="CallContext"/> 的功能拓展
     /// </summary>
     public static class CallContextEx
     {
